@@ -8,6 +8,7 @@ public partial class Scene01 : Node2D
 	{
 	wjfospoiohkdsjmnfuhf;anfljgbpeiefhp;wf
 	sldhkjshfajnfkjsdhfaslkjo;
+	wwwww,
 	}
 
 	// Called every frame. 'delta' is the elapsed time since the previous frame.
