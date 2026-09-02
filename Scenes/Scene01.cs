@@ -7,6 +7,7 @@ public partial class Scene01 : Node2D
 	public override void _Ready()
 	{
 	wjfospoiohkdsjmnfuhf;anfljgbpeiefhp;wf
+	sldhkjshfajnfkjsdhfaslkjo;
 	}
 
 	// Called every frame. 'delta' is the elapsed time since the previous frame.
