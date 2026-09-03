@@ -1,0 +1,24 @@
+[gd_scene load_steps=5 format=3 uid="uid://t4v91ks2dpmot"]
+
+[ext_resource type="Script" path="res://src/Enemies/EnemyBase.cs" id="1_eny"]
+[ext_resource type="Script" path="res://src/Combat/Health.cs" id="2_hp"]
+[ext_resource type="Texture2D" path="res://art/enemy.svg" id="3_tex"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_eny"]
+radius = 14.0
+
+[node name="EnemyBase" type="CharacterBody2D"]
+collision_layer = 2
+collision_mask = 1
+motion_mode = 1
+script = ExtResource("1_eny")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture = ExtResource("3_tex")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_eny")
+
+[node name="Health" type="Node" parent="."]
+script = ExtResource("2_hp")
+MaxHP = 1

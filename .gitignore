@@ -1,3 +1,16 @@
-# Godot 4+ specific ignores
+# Godot
 .godot/
 /android/
+
+# .NET
+bin/
+obj/
+.vs/
+.vscode/
+*.user
+
+# 系统
+Thumbs.db
+desktop.ini
+
+# ⚠️ 不要忽略 .import 和 .cs.uid —— 它们必须提交，否则别人拉下来资源全丢

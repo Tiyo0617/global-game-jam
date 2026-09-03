@@ -1,0 +1,39 @@
+[gd_scene load_steps=7 format=3 uid="uid://cwnwj8k2q7xlx"]
+
+[ext_resource type="Script" path="res://src/Player/Player.cs" id="1_ply"]
+[ext_resource type="Script" path="res://src/Combat/Health.cs" id="2_hp"]
+[ext_resource type="Script" path="res://src/Player/Weapon.cs" id="3_wp"]
+[ext_resource type="Texture2D" path="res://art/player.svg" id="4_tex"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_ply"]
+radius = 14.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_hurt"]
+radius = 14.0
+
+[node name="Player" type="CharacterBody2D"]
+collision_layer = 1
+collision_mask = 2
+motion_mode = 1
+script = ExtResource("1_ply")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture = ExtResource("4_tex")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_ply")
+
+[node name="Hurtbox" type="Area2D" parent="."]
+collision_layer = 1
+collision_mask = 2
+monitoring = true
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Hurtbox"]
+shape = SubResource("CircleShape2D_hurt")
+
+[node name="Health" type="Node" parent="."]
+script = ExtResource("2_hp")
+MaxHP = 3
+
+[node name="Weapon" type="Node" parent="."]
+script = ExtResource("3_wp")

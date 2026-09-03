@@ -11,13 +11,30 @@ config_version=5
 [application]
 
 config/name="GlobalGameJam"
-run/main_scene="uid://b4fms81j2wtn7"
+run/main_scene="res://Main.tscn"
 config/features=PackedStringArray("4.5", "C#", "GL Compatibility")
 config/icon="res://icon.svg"
+
+[autoload]
+
+GameManager="*res://src/Core/GameManager.cs"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/stretch/mode="canvas_items"
 
 [dotnet]
 
 project/assembly_name="GlobalGameJam"
+
+[layer_names]
+
+2d_physics/layer_1="Player"
+2d_physics/layer_2="Enemy"
+2d_physics/layer_3="EnemyBullet"
+2d_physics/layer_4="PlayerBullet"
 
 [rendering]
 
