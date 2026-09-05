@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="PlayerUpgradeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/Upgrades/PlayerUpgradeData.cs" id="1_scr"]
+
+[resource]
+script = ExtResource("1_scr")
+DisplayName = "成长"
+Description = "累计击杀 10 个敌人，生命上限 +1"
+Rarity = 1
+MaxStack = 1
+IsMechanic = false
+Stat = 18
+Op = 2
+Value = 10.0

@@ -11,6 +11,8 @@ public partial class Player : CharacterBody2D
     private Health _health = null!;
     private Area2D _hurtbox = null!;
     private Vector2 _vel;
+    private int _lifestealCounter;
+    private int _growthCounter;
 
     public Health HealthComp => _health;
 
@@ -26,6 +28,8 @@ public partial class Player : CharacterBody2D
 
         GameManager.I.Player = this;
 
+        Bus.Sub<EntityDied>(this, OnEnemyDied);
+
         int maxHp = (int)GameManager.I.PlayerStats.Get(PlayerStat.MaxHP);
         _health.SetMaxHP(maxHp, healToFull: true);
         GlobalPosition = ArenaBounds.Center;
@@ -40,6 +44,8 @@ public partial class Player : CharacterBody2D
         GlobalPosition = ArenaBounds.Center;
         _vel = Vector2.Zero;
         Velocity = Vector2.Zero;
+        _lifestealCounter = 0;
+        _growthCounter = 0;
     }
 
     public override void _PhysicsProcess(double delta)
@@ -113,6 +119,45 @@ public partial class Player : CharacterBody2D
             };
             DamageSystem.Deal(ref toPlayer);   // 名刀窗口内会被 DamageSystem 取消
             return;                            // 一帧只结算一次接触伤害
+        }
+    }
+
+    /// <summary>
+    /// 吸血（寄生根须）与成长：玩家击杀敌人时计数。
+    /// 吸血到阈值 → 回血；成长到阈值 → 生命上限 +Y。两个计数器独立。
+    /// 阈值由 .tres 词条卡 Override 设定（0 = 未激活）；回血/成长量从 Cfg 读。
+    /// </summary>
+    private void OnEnemyDied(EntityDied e)
+    {
+        if (e.TargetIsPlayer) return;   // 只关心敌人死亡
+
+        var st = GameManager.I.PlayerStats;
+
+        // ---- 吸血 ----
+        float lk = st.Get(PlayerStat.LifestealKills);
+        if (lk > 0f)
+        {
+            _lifestealCounter++;
+            if (_lifestealCounter >= (int)lk)
+            {
+                _health.Heal(GameManager.I.Cfg.LifestealAmount);
+                _lifestealCounter = 0;
+            }
+        }
+
+        // ---- 成长 ----
+        float gk = st.Get(PlayerStat.GrowthKills);
+        if (gk > 0f)
+        {
+            _growthCounter++;
+            if (_growthCounter >= (int)gk)
+            {
+                int amount = GameManager.I.Cfg.GrowthAmount;
+                int newBase = (int)st.GetBase(PlayerStat.MaxHP) + amount;
+                st.SetBase(PlayerStat.MaxHP, newBase);
+                _health.SetMaxHP((int)st.Get(PlayerStat.MaxHP));
+                _growthCounter = 0;
+            }
         }
     }
 }

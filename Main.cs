@@ -90,8 +90,10 @@ public partial class Main : Node2D
         ps.SetBase(PlayerStat.Pierce, 0f);
         ps.SetBase(PlayerStat.ExtraShots, 0f);
         ps.SetBase(PlayerStat.HitboxScale, 1f);
-        ps.SetBase(PlayerStat.LifestealKills, 0f);
-        ps.SetBase(PlayerStat.LifestealAmount, 0f);
+        ps.SetBase(PlayerStat.LifestealKills, 0f);   // 0 = 未激活，抽到词条卡后 Override 为阈值
+        ps.SetBase(PlayerStat.LifestealAmount, 0f);  // 效果代码直接读 Cfg.LifestealAmount
+        ps.SetBase(PlayerStat.GrowthKills, 0f);       // 同上
+        ps.SetBase(PlayerStat.GrowthAmount, 0f);      // 同上
         ps.SetBase(PlayerStat.DashRange, cfg.DashRange);
         ps.SetBase(PlayerStat.DashCooldown, cfg.DashCooldown);
         ps.SetBase(PlayerStat.RicochetChance, cfg.RicochetChance);

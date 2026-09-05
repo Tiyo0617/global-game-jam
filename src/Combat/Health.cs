@@ -28,6 +28,13 @@ public partial class Health : Node
 
     public void FullHeal() => Current = MaxHP;
 
+    /// <summary>恢复指定血量（不超过 MaxHP）。已死则忽略。</summary>
+    public void Heal(int amount)
+    {
+        if (IsDead || amount <= 0) return;
+        Current = Mathf.Min(MaxHP, Current + amount);
+    }
+
     public void SetMaxHP(int v, bool healToFull = false)
     {
         MaxHP = v;

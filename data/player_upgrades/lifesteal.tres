@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="PlayerUpgradeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/Upgrades/PlayerUpgradeData.cs" id="1_scr"]
+
+[resource]
+script = ExtResource("1_scr")
+DisplayName = "寄生根须"
+Description = "累计击杀 4 个敌人，恢复 1 点生命"
+Rarity = 0
+MaxStack = 1
+IsMechanic = false
+Stat = 10
+Op = 2
+Value = 4.0

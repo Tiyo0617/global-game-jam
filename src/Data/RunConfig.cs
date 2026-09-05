@@ -40,6 +40,12 @@ public partial class RunConfig : Resource
     [Export] public float SplitSpeedMul { get; set; } = 1.5f;         // 分裂小怪速度倍率
     [Export] public float SplitScale { get; set; } = 0.5f;            // 分裂小怪体积
 
+    // ---- 吸血与成长（撞击流两条腿）默认值 ----
+    [Export] public int LifestealKills { get; set; } = 4;        // 吸血：击杀多少个回一次血
+    [Export] public int LifestealAmount { get; set; } = 1;      // 吸血：每次回多少血
+    [Export] public int GrowthKills { get; set; } = 10;         // 成长：击杀多少个生命上限 +1
+    [Export] public int GrowthAmount { get; set; } = 1;         // 成长：每次生命上限 +多少
+
     [Export] public Godot.Collections.Array<WaveConfig> Waves { get; set; } = new();
 
     [Export] public PackedScene? PlayerScene { get; set; }
@@ -63,6 +69,10 @@ public partial class RunConfig : Resource
         BulletSpeed = 500f,
         EnemyHP = 1,
         EnemyMoveSpeed = 120f,
+        LifestealKills = 4,
+        LifestealAmount = 1,
+        GrowthKills = 10,
+        GrowthAmount = 1,
         RicochetChance = 0.5f,
         DashRange = 120f,
         DashCooldown = 3f,

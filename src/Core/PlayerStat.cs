@@ -27,4 +27,6 @@ public enum PlayerStat
     FlagDash,           // 闪现（鼠标右键）
     FlagDeathblade,     // 名刀：0 血后窗口内清场则复活判胜
     DeathbladeWindow,
+    GrowthKills,        // 成长：累计击杀 X 个 → 生命上限 +Y
+    GrowthAmount,       // 成长：每次增加的生命上限
 }
