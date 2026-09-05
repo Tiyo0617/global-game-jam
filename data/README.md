@@ -13,7 +13,7 @@
 [gd_resource type="Resource" script_class="PlayerUpgradeData" load_steps=2 format=3]
 
 [ext_resource type="Script" path="res://src/Upgrades/PlayerUpgradeData.cs" id="1_scr"]
-
+a
 [resource]
 script = ExtResource("1_scr")
 DisplayName = "词条名"

@@ -16,6 +16,14 @@ public partial class Bullet : Area2D
 
     private readonly HashSet<Node> _alreadyHit = new();
 
+    /// <summary>
+    /// 本发是否已"销毁"。防止同一物理帧收到多次命中回调（一发子弹同帧扎进多只
+    /// 重叠敌人时，Godot 的 body_entered 会逐只派发）：
+    /// 普通弹第一次命中即销毁，之后的回调应直接忽略 —— 否则既会重复入池（Pool
+    /// 已加防重，这里再堵一层），又会让已消失的子弹继续给后面的敌人结算伤害。
+    /// </summary>
+    private bool _dead;
+
     // ⚠️ 调试开关：true = 强制开启跳弹。
     private const bool DebugForceRicochet = false;
 
@@ -42,6 +50,7 @@ public partial class Bullet : Area2D
         Damage = damage;
         Pierce = pierce;
         _alreadyHit.Clear();
+        _dead = false;   // ⚠️ 对象池复用，必须重置，否则上一发的"已销毁"状态会带到下一发
 
         // 跳弹词条在发射时刻一次性判定（P2-11）：开关 + 概率都在此刻定格，
         // 飞行途中不再每帧调用 Rng.Chance（原实现每弹每帧摇一次，60fps 下 ~60 次/秒/弹）。
@@ -94,6 +103,7 @@ public partial class Bullet : Area2D
 
     private void OnBodyEntered(Node2D body)
     {
+        if (_dead) return;   // 同帧多回调：本发已销毁，后续命中一律忽略
         if (!GodotObject.IsInstanceValid(body)) return;
         if (!body.IsInGroup("enemy")) return;
         if (!_alreadyHit.Add(body)) return;
@@ -114,5 +124,10 @@ public partial class Bullet : Area2D
         else Pierce--;
     }
 
-    private void Despawn() => Bus.Pub(new DespawnBullet { Bullet = this });
+    private void Despawn()
+    {
+        if (_dead) return;   // 幂等：同一发只允许销毁一次
+        _dead = true;
+        Bus.Pub(new DespawnBullet { Bullet = this });
+    }
 }

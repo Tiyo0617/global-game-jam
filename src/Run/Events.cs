@@ -50,3 +50,16 @@ public readonly struct DeathbladeStarted
     public readonly float Duration;
     public DeathbladeStarted(float duration) { Duration = duration; }
 }
+
+/// <summary>
+/// 新一轮即将开始（在刷第一波之前）。用于清空上一轮残留的瞬态实体
+/// （目前在途子弹）。⚠️ 必须在 spawner.BeginRound 之前发布——
+/// 否则被三选一暂停冻结在出生点的遗留子弹会当帧秒杀新轮第 1 波。
+/// Bus.Pub 是同步的：订阅者在此事件里清场，会在 RoundDirector 继续往下
+/// 执行 BeginRound 的刷怪之前完成。
+/// </summary>
+public readonly struct RoundClearing
+{
+    public readonly int Round;
+    public RoundClearing(int round) { Round = round; }
+}

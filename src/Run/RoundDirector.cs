@@ -47,6 +47,12 @@ public partial class RoundDirector : Node
 
     private void BeginRound()
     {
+        // ⚠️ 必须在刷第一波之前清空在途子弹：上一轮末尾射出的子弹被三选一
+        // 暂停冻结在右边缘（x≈1260，正好是新轮出生点），解除暂停的当帧会把
+        // 新轮第 1 波当帧秒杀。Bus.Pub 同步，订阅者（BulletService）会立刻
+        // 清完才继续往下执行 BeginRound 的刷怪。
+        Bus.Pub(new RoundClearing(GameManager.I.Round));
+
         GameManager.I.Player?.ResetForRound();
         _enemies.ClearAll();
         _spawner.BeginRound(GameManager.I.Round);
