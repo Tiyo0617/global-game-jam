@@ -19,6 +19,7 @@ config/icon="res://icon.svg"
 
 GameManager="*res://src/Core/GameManager.cs"
 SaveService="*res://src/UI/SaveService.cs"
+AudioService="*res://src/Audio/AudioService.cs"
 
 [display]
 

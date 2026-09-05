@@ -200,7 +200,8 @@ public partial class Weapon : Node
             Pierce    = pierce,
         });
 
-        Bus.Pub(new SfxRequest { Key = "shoot" });
+        // 音效区分：激光 = 激光射出音效，普通炮弹 = 炮弹射出音效
+        Bus.Pub(new SfxRequest { Key = laser ? "laser" : "shoot" });
     }
 
     /// <summary>

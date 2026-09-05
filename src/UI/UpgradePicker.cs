@@ -172,7 +172,10 @@ public partial class UpgradePicker : UiBase
         panel.GuiInput += (e) =>
         {
             if (e is InputEventMouseButton mb && mb.Pressed && mb.ButtonIndex == MouseButton.Left)
+            {
+                Bus.Pub(new SfxRequest { Key = "ui" });   // 三选一卡片点击 = UI 点击
                 onClick();
+            }
         };
 
         return panel;

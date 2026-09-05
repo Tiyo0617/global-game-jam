@@ -26,6 +26,9 @@ public partial class EnemyBase : CharacterBody2D
     /// <summary>本只敌人死亡时是否允许分裂（供 EnemyService 判断要不要发分裂请求）。</summary>
     public bool CanSplit => _canSplit;
 
+    /// <summary>当前皮肤类别（精英/马蜂窝/马蜂等）。AudioService 据此在出生/消失时开关氛围音。</summary>
+    public EnemySkinKind Kind => _skinKind;
+
     public override void _Ready()
     {
         _health = GetNode<Health>("Health");

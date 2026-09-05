@@ -11,6 +11,13 @@ public partial class Main : Node2D
     /// <summary>战斗场地背景图。换图只改这里，别的不用动。</summary>
     private const string BackgroundPath = "res://art/bg_topdown_1280x720.png";
 
+    public override void _ExitTree()
+    {
+        // 离开战斗场景（回主菜单 / 结算跳转）时敌人节点随场景销毁，逐个 EnemyDespawned 不会触发，
+        // 必须显式停掉精英/蜂群循环音并清零计数，否则 Autoload 里会残留一直响。
+        AudioService.I?.StopAllLoops();
+    }
+
     public override void _Ready()
     {
         ArenaBounds.Init(GetViewportRect());
@@ -31,7 +38,6 @@ public partial class Main : Node2D
         var spawner  = new SpawnDirector { Name = "SpawnDirector" };
         var upgrades = new UpgradeService { Name = "UpgradeService" };
         var fx       = new Fx { Name = "Fx" };
-        var audio    = new AudioService { Name = "AudioService" };
         var rounds   = new RoundDirector { Name = "RoundDirector" };
 
         AddChild(enemies);
@@ -39,7 +45,6 @@ public partial class Main : Node2D
         AddChild(spawner);
         AddChild(upgrades);
         AddChild(fx);
-        AddChild(audio);
         AddChild(rounds);
 
         enemies.Init(GameManager.I.Cfg.EnemyScene);
