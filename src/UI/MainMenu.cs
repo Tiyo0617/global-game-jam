@@ -18,11 +18,39 @@ public partial class MainMenu : UiBase
     private VBoxContainer _slotsList = null!;
     private readonly List<Control> _fadeItems = new();
     private bool _leaving;
+    private AudioStreamPlayer? _bgm;
 
     protected override void OnUiReady()
     {
         BuildUi();
         FadeIn(_fadeItems);
+        PlayMenuBgm();
+    }
+
+    /// <summary>
+    /// 初始界面 BGM（audio/bgm/UIbgm.wav，循环播放）。
+    /// 播放器挂在主菜单场景内 —— 点"开始游戏"切场景时随节点释放自动停止。
+    /// </summary>
+    private void PlayMenuBgm()
+    {
+        const string path = "res://audio/bgm/UIbgm.wav";
+        if (!ResourceLoader.Exists(path)) return;
+
+        var stream = GD.Load<AudioStream>(path);
+        if (stream is AudioStreamWav wav)
+        {
+            wav.LoopMode = AudioStreamWav.LoopModeEnum.Forward;   // 无缝循环
+            wav.LoopBegin = 0;
+            wav.LoopEnd = wav.Data.Length / 2;                     // 16-bit mono：字节/2 = 采样数
+        }
+
+        _bgm = new AudioStreamPlayer
+        {
+            Stream = stream,
+            VolumeDb = -10f,   // 音量压低，作背景
+        };
+        AddChild(_bgm);
+        _bgm.Play();
     }
 
     private void BuildUi()
