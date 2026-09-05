@@ -38,7 +38,7 @@ Value = 1.0
 | `MaxStack` | 可叠几层；满了之后不再出现在池里 |
 
 > 现成范例：`player_upgrades/swift.tres`（迅捷）· `enemy_upgrades/tough.tres`（坚韧）。照抄改数值即可。
-
+dddddawdsadwa
 **方式 B：Godot 编辑器。** 右键目录 → 新建资源 → 搜类型名
 （`RunConfig` / `WaveConfig` / `FeelConfig` / `StringsData` / `PlayerUpgradeData` / `EnemyUpgradeData`）
 → 填表 → 另存为 `.tres`。

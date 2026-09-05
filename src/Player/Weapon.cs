@@ -17,6 +17,25 @@ public partial class Weapon : Node
     /// <remarks>复用 Bullet 现有的 Pierce-- 逻辑，无需改动 Bullet。</remarks>
     private const int LaserPierce = int.MaxValue;
 
+    /// <summary>
+    /// 激光弹飞行速度（px/s）。光束 330px、一屏 1280px —— 4800px/s ≈ 0.27s 横穿全屏，
+    /// 一出手就是"刷"的一道光线。激光不吃 BulletSpeed 词条（那是普通弹的事），恒定超高速。
+    /// </summary>
+    private const float LaserSpeed = 4800f;
+
+    // ---- 环绕发射口特效（代表激光当前环绕发射点）----
+    /// <summary>
+    /// 发射口特效贴图 = bullet_orb（复用玩家已有素材）。想换图：把美术图放进 art/ 后改这一行路径。
+    /// </summary>
+    private const string MuzzleFxTexPath = "res://art/anim/bullet_orb.png";
+    /// <summary>
+    /// 发射口绕玩家旋转的轨道半径（px）：与子弹枪口偏移(16)一致 → 光点正好标记子弹冒出的位置。
+    /// ZIndex=10 保证即使与角色立绘交叠也画在最上层，不会被遮。
+    /// </summary>
+    private const float MuzzleOrbit = 16f;
+    /// <summary>发射口贴图的显示宽度（px）。贴图多大都会自动缩到这个尺寸。</summary>
+    private const float MuzzleFxSize = 18f;
+
     // ⚠️ 调试开关：true = 强制开启对应词条（词条系统未完成时的临时验证手段）。
     //    正常游玩保持 false —— 词条由三选一系统启用。
     private const bool DebugForceExtraShots = false;
@@ -43,6 +62,9 @@ public partial class Weapon : Node
     /// <summary>激光当前发射角度。每帧持续推进（无论是否开火，保持环绕节奏）。</summary>
     private float _laserAngle;
 
+    /// <summary>环绕发射口特效节点（Sprite2D，挂在玩家下）。仅激光激活时显示，每帧跟到 _laserAngle。</summary>
+    private Node2D _muzzleFx = null!;
+
     // ---- 闪现：右键事件触发 + 冷却 ----
     // ⚠️ 文档第六章要求"输入加在 InputState.cs"，但 Core 目录只读（第五章严格 #2），存在冲突。
     //    输入检测暂做在 Weapon 内部，功能等价；如 P0/P1 同意改 InputState 再迁移。
@@ -59,6 +81,42 @@ public partial class Weapon : Node
     public override void _Ready()
     {
         _owner = GetParent<Node2D>();
+
+        // ⚠️ 特效节点不能在此同步挂到 _owner 上：玩家可能是被 Main._Ready()
+        //    里 AddChild 进场的，此时父节点正处在"装配子节点"的 blocked 状态，
+        //    同步 AddChild 会报 "Parent node is busy setting up children"（P2-33）。
+        //    延到帧末再搭，头几帧 UpdateMuzzleFx 靠判空安全跳过。
+        Callable.From(BuildMuzzleFx).CallDeferred();
+    }
+
+    /// <summary>
+    /// 搭建"环绕发射口"特效：一个挂在玩家下的 Sprite2D（贴图显示，和子弹/玩家同一套
+    /// 已验证可靠的渲染方式；不用 _Draw 自绘）。
+    /// 每帧由 UpdateMuzzleFx 放到当前环绕角度对应的枪口位置。
+    /// </summary>
+    private void BuildMuzzleFx()
+    {
+        var tex = GD.Load<Texture2D>(MuzzleFxTexPath);
+        if (tex == null)
+        {
+            GD.PushWarning($"[Weapon] 发射口贴图加载失败：{MuzzleFxTexPath}（路径不存在 → 发射口不显示）");
+            return;
+        }
+
+        _muzzleFx = new Node2D { Name = "LaserMuzzleFx", ZIndex = 10 };   // ZIndex=10：画在角色立绘最上层
+        var sprite = new Sprite2D
+        {
+            Texture = tex,
+            Modulate = Colors.White,   // 直接用 bullet_orb 原色（不染色）
+        };
+        // 按贴图原始尺寸自动缩放到统一显示大小（换多大贴图都不用改比例）
+        Vector2 t = tex.GetSize();
+        float longest = Mathf.Max(t.X, t.Y);
+        sprite.Scale = longest > 0f ? Vector2.One * (MuzzleFxSize / longest) : Vector2.One;
+
+        _muzzleFx.AddChild(sprite);
+        _muzzleFx.Visible = false;   // 普通模式先藏起来
+        _owner.AddChild(_muzzleFx);
     }
 
     /// <summary>
@@ -85,6 +143,10 @@ public partial class Weapon : Node
 
         // 0.5) 闪现（边沿触发，独立于开火 CD）
         UpdateDash(d);
+
+        // 0.6) 环绕发射口：激光激活时显示，每帧贴到当前环绕角度（在任何提前 return 之前，
+        //      保证光点始终跟随角度转动）
+        UpdateMuzzleFx();
 
         // 1) 推进连发补射队列（优先于主开火 CD，保证补射不被吞）
         if (_pendingShots > 0)
@@ -149,6 +211,30 @@ public partial class Weapon : Node
         if (DebugForceDash) GD.Print($"[闪现调试] 瞬移到 {_owner.GlobalPosition}，冷却 {_dashCd}s");
     }
 
+    /// <summary>
+    /// 每帧把发射口特效贴到"当前环绕角度 + MuzzleOrbit 轨道"上。
+    /// 激光词条激活（或 DebugForceLaser 调试开启）才显示，否则隐藏。
+    /// </summary>
+    private void UpdateMuzzleFx()
+    {
+        if (_muzzleFx == null) return;
+
+        var st = GameManager.I.PlayerStats;
+        bool laser = st.HasFlag(PlayerStat.FlagLaser);
+
+        // ⚠️ 调试分支：强制开启时发射口一并显示，验证完随 DebugForceLaser 一起移除
+        if (DebugForceLaser) laser = true;
+
+        if (!laser)
+        {
+            _muzzleFx.Visible = false;
+            return;
+        }
+
+        _muzzleFx.Visible = true;
+        _muzzleFx.GlobalPosition = _owner.GlobalPosition + AngleToDirection(_laserAngle) * MuzzleOrbit;
+    }
+
     // ==================== 开火 ====================
 
     /// <summary>主发射：射出第一发，并按 ExtraShots 词条排入补射队列。</summary>
@@ -193,11 +279,16 @@ public partial class Weapon : Node
 
         Bus.Pub(new SpawnBulletRequest
         {
-            Position  = _owner.GlobalPosition + new Vector2(16f, 0f),   // 枪口偏移
+            // 激光的枪口 = 环绕光点（MuzzleFx 所在位置），光束从光点上喷出来；
+            // 普通弹仍是固定正右枪口偏移。
+            Position  = _owner.GlobalPosition
+                        + (laser ? dir * MuzzleOrbit : new Vector2(16f, 0f)),
             Direction = dir,
-            Speed     = st.Get(PlayerStat.BulletSpeed),
+            // 激光不吃 BulletSpeed 词条，恒定超高速横扫
+            Speed     = laser ? LaserSpeed : st.Get(PlayerStat.BulletSpeed),
             Damage    = 1,
             Pierce    = pierce,
+            Laser     = laser,   // 标记激光：Bullet 换 jiguang 柱状射线贴图，与炮弹区分
         });
 
         Bus.Pub(new SfxRequest { Key = "shoot" });

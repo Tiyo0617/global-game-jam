@@ -29,7 +29,7 @@ public partial class BulletService : Node
     private void OnSpawn(SpawnBulletRequest r)
     {
         if (_pool == null) return;
-        _pool.Rent().Launch(r.Position, r.Direction, r.Speed, r.Damage, r.Pierce);
+        _pool.Rent().Launch(r.Position, r.Direction, r.Speed, r.Damage, r.Pierce, r.Laser);
     }
 
     private void OnDespawn(DespawnBullet e)

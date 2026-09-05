@@ -61,9 +61,13 @@ public sealed class Pool<T> where T : Node2D
             return;
         }
 
-        n.SetPhysicsProcess(false);
-        n.Visible = false;
-        n.GlobalPosition = new Vector2(-99999f, -99999f);
+        // ⚠️ 所有"物理相关状态变更"必须走 deferred。
+        //    OnBodyEntered / 出生点 Instantiate 等物理回调或紧邻物理 flush 的时机里，
+        //    直接赋值会触发 Godot 警告 "Can't change this state while flushing queries"。
+        //    set_deferred / call_deferred 把改动排到当前物理帧结束之后再执行。
+        n.CallDeferred("set_physics_process", false);
+        n.SetDeferred("visible", false);
+        n.SetDeferred("global_position", new Vector2(-99999f, -99999f));
         _free.Push(n);
     }
 }
