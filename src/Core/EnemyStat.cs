@@ -20,6 +20,7 @@ public enum EnemyStat
     EliteChance,
     EliteHPMul,
     EliteSpeedMul,
+    EliteScaleMul,          // 精英体积倍率（P2-16：数据驱动，默认 2f）
     FlagSpawnFourSides,     // 四向：出生点改为整个屏幕边缘
     FlagSplit,              // 分裂：死亡分裂成 2 个小怪
     FlagTracker,            // 追踪怪：每波额外刷若干追踪玩家的单位

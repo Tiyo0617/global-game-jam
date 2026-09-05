@@ -4,11 +4,7 @@ namespace GGJ;
 
 /// <summary>
 /// 射击。固定向正右方，不可瞄准（核心机制，不要加瞄准）。
-///
-/// TODO(程序A)：
-///   · 激光 FlagLaser —— 改成穿透 + 发射方向时刻顺时针环绕玩家
-///   · 跳弹 FlagRicochet —— 概率光学反射（做在 Bullet 里）
-///   · 闪现 FlagDash —— 鼠标右键，向当前移动方向瞬移
+/// 词条效果：连发（补射）、激光（环绕+穿透）、闪现（右键瞬移）——均已实现。
 /// </summary>
 public partial class Weapon : Node
 {

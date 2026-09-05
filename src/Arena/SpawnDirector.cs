@@ -4,10 +4,7 @@ namespace GGJ;
 
 /// <summary>
 /// 波次刷怪导演。**定时推进**：到点就刷，不等上一波清完（GDD §3.7，刻意的压迫感）。
-///
-/// TODO(程序B)：
-///   · 精英 FlagElite —— 每轮每波按概率多刷 1 个大体积慢速单位
-///   · 追踪怪 FlagTracker —— 每波额外刷若干追踪单位（发 SpawnEnemyRequest 时 IsTracker = true）
+/// 词条效果：四向出生、精英、追踪怪——均已实现。
 /// </summary>
 public partial class SpawnDirector : Node
 {
@@ -19,9 +16,6 @@ public partial class SpawnDirector : Node
 
     // ⚠️ 调试开关：true = 强制开启追踪怪。
     private const bool DebugForceTracker = false;
-
-    /// <summary>精英怪体积倍率（EnemyStat 无对应枚举，按"大体积"设计意图写死 2 倍）。</summary>
-    private const float EliteScaleMul = 2f;
 
     private WaveConfig _wave = WaveConfig.Create(3, 3, 5f);
     private int _round = 1;
@@ -180,9 +174,12 @@ public partial class SpawnDirector : Node
         if (speedMul <= 0f) speedMul = 0.4f;   // 策划案移速 ×0.4（极慢）
         float baseScale = st.Get(EnemyStat.BodyScale);
         if (baseScale <= 0f) baseScale = 1f;
+        // P2-16：体积倍率改为数据驱动（EnemyStat.EliteScaleMul，基础值 2f 在 EnemyService.Init 设置）
+        float scaleMul = st.Get(EnemyStat.EliteScaleMul);
+        if (scaleMul <= 0f) scaleMul = 2f;   // 兜底：未配置时保持原"大体积"设计意图
 
         // ⚠️ 调试日志：仅 DebugForceElite 开启时打印
-        if (DebugForceElite) GD.Print($"[精英调试] 第 {_wavesSpawned} 波刷出精英：HP={eliteHP} 速度x{speedMul} 体积x{baseScale * EliteScaleMul}");
+        if (DebugForceElite) GD.Print($"[精英调试] 第 {_wavesSpawned} 波刷出精英：HP={eliteHP} 速度x{speedMul} 体积x{baseScale * scaleMul}");
 
         Bus.Pub(new SpawnEnemyRequest
         {
@@ -190,7 +187,7 @@ public partial class SpawnDirector : Node
             Direction = dir,
             SpeedMul  = speedMul,
             HP        = eliteHP,
-            Scale     = baseScale * EliteScaleMul,
+            Scale     = baseScale * scaleMul,
             IsTracker = false,
             CanSplit  = true,   // 精英也是母体，死亡可裂（与普通怪一致）
         });

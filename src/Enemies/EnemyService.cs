@@ -9,12 +9,6 @@ namespace GGJ;
 /// </summary>
 public partial class EnemyService : Node
 {
-    /// <summary>
-    /// 场上存活上限（GDD §7-1，防雪崩）。
-    /// 超出时最老的敌人离场——防止后期敌人无限堆积导致玩家必死。
-    /// </summary>
-    private const int MaxAlive = 20;
-
     // ⚠️ 调试开关：true = 强制开启分裂。
     private const bool DebugForceSplit = false;
 
@@ -46,21 +40,18 @@ public partial class EnemyService : Node
             return;
         }
         _pool = new Pool<EnemyBase>(scene, this);
+
+        // P2-16：精英体积倍率的基础值在此设置（Main.InitStats 之后执行，不冲突）。
+        // 策划调整数值改这里的 2f 即可，SpawnDirector 改为从 StatBlock 读取。
+        GameManager.I.EnemyStats.SetBase(EnemyStat.EliteScaleMul, 2f);
     }
 
     private void OnSpawn(SpawnEnemyRequest r)
     {
         if (_pool == null) return;
 
-        // ---- 存活上限：超出则把最老的（队首）踢掉，防雪崩 ----
-        // ⚠️ 必须在 Rent 新的之前踢：否则极端情况下新刷出的会立刻又被踢掉。
-        // ⚠️ 用 while 不用 if：一次刷怪请求前可能需要踢多个才降到上限以下。
-        // 注：_active 是按刷出顺序排列的，_active[0] 就是场上最老的敌人。
-        while (_active.Count >= MaxAlive)
-        {
-            Despawn(_active[0]);
-        }
-
+        // 注：存活上限机制已按策划要求移除（P2-15），场上敌人数量不再设限。
+        // _active 列表仍保留 —— AliveCount（胜利条件的"场上清空"判定）依赖它。
         var e = _pool.Rent();
         e.Configure(r.Position, r.Direction, r.SpeedMul, r.HP, r.Scale, r.IsTracker, r.CanSplit);
         _active.Add(e);
@@ -94,7 +85,7 @@ public partial class EnemyService : Node
     /// <summary>
     /// 在死亡位置分裂出 2 个小怪：1 血、速度 150%、体积减半、方向随机散开。
     /// 小怪 CanSplit = false —— 防止"裂→死→再裂"无限套娃。
-    /// 走正常 SpawnEnemyRequest 流程，自动享受对象池和存活上限 20 的保护。
+    /// 走正常 SpawnEnemyRequest 流程，自动由对象池复用。
     /// </summary>
     private void SpawnSplit(Vector2 pos)
     {
@@ -122,7 +113,14 @@ public partial class EnemyService : Node
 
     private void Despawn(EnemyBase e)
     {
-        if (!GodotObject.IsInstanceValid(e)) return;
+        // ⚠️ P2-10：无效实例也必须从 _active 移除！
+        // 否则调用方拿到失效引用时（历史上：存活上限循环拿 _active[0]）列表长度不变 → 死循环冻死整局。
+        // 失效的 Godot 对象无法归还对象池，只能直接移除引用。
+        if (!GodotObject.IsInstanceValid(e))
+        {
+            _active.Remove(e);
+            return;
+        }
         e.Deactivate();
         _pool?.Return(e);
         _active.Remove(e);
