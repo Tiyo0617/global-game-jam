@@ -209,6 +209,7 @@ public partial class Bullet : Area2D
             Kind = DamageKind.Bullet,
             Position = body.GlobalPosition,
         };
+        Bus.Pub(new SfxRequest { Key = "hit" });   // 子弹命中音效：命中目标瞬间播放（AudioService 有 40ms 节流防爆音）
         DamageSystem.Deal(ref hit);
 
         if (Pierce <= 0) Despawn();

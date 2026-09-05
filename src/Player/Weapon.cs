@@ -291,7 +291,8 @@ public partial class Weapon : Node
             Laser     = laser,   // 标记激光：Bullet 换 jiguang 柱状射线贴图，与炮弹区分
         });
 
-        Bus.Pub(new SfxRequest { Key = "shoot" });
+        // 音效区分：激光 = 激光射出音效，普通炮弹 = 炮弹射出音效
+        Bus.Pub(new SfxRequest { Key = laser ? "laser" : "shoot" });
     }
 
     /// <summary>

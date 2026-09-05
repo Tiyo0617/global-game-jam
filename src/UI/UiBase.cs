@@ -76,7 +76,11 @@ public abstract partial class UiBase : CanvasLayer
             if (tex != null) btn.Icon = tex;
         }
 
-        btn.Pressed += onClick;
+        btn.Pressed += () =>
+        {
+            Bus.Pub(new SfxRequest { Key = "ui" });   // UI 点击音效：所有按钮统一在这里响
+            onClick();
+        };
         if (hoverFx) AddHoverFx(btn);
         return btn;
     }
