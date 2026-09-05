@@ -2,6 +2,19 @@ using Godot;
 
 namespace GGJ;
 
+/// <summary>皮肤类别：决定敌人从哪个贴图池换皮。</summary>
+public enum EnemySkinKind
+{
+    /// <summary>普通怪：从默认池（鸟/虫/甲虫）随机。</summary>
+    Normal = 0,
+    /// <summary>精英怪（Boss）：从考拉/鸽子大体积池随机。</summary>
+    Elite = 1,
+    /// <summary>分裂母体：马蜂窝。分裂词条开启后，普通母体生前即用此造型。</summary>
+    Hive = 2,
+    /// <summary>分裂子怪：马蜂。母体被打死后裂出的 2 个小怪用此造型。</summary>
+    Bee = 3,
+}
+
 /// <summary>
 /// 通用精灵动画控制器。挂在 AnimatedSprite2D 上。
 /// - 美术给纹理（可带 hframes 的精灵表），自动切帧建 SpriteFrames。
@@ -21,15 +34,34 @@ public partial class SpriteAnimator : AnimatedSprite2D
     [Export] public bool FlipWithDirection = false;   // 朝向跟随水平移动方向
     [Export] public bool ArtFacesLeft = true;          // 美术默认朝左
 
-    // 随机换皮：RandomIdleTextures[i] 与 RandomWalkTextures[i] 是同一套
+    // 普通怪随机换皮：RandomIdleTextures[i] 与 RandomWalkTextures[i] 是同一套
     [Export] public Texture2D?[]? RandomIdleTextures;
     [Export] public Texture2D?[]? RandomWalkTextures;
     [Export] public int RandomIdleFrames = 1;
     [Export] public int RandomWalkFrames = 4;
 
+    // 精英(Boss)专属换皮：从这两池随机，普通怪永不出现
+    [Export] public Texture2D?[]? EliteIdleTextures;
+    [Export] public Texture2D?[]? EliteWalkTextures;
+    [Export] public int EliteIdleFrames = 1;
+    [Export] public int EliteWalkFrames = 4;
+
+    // 分裂母体（马蜂窝）专属：分裂词条开启后的普通母体生前用此造型
+    [Export] public Texture2D?[]? HiveIdleTextures;
+    [Export] public Texture2D?[]? HiveWalkTextures;
+    [Export] public int HiveIdleFrames = 4;
+    [Export] public int HiveWalkFrames = 4;
+
+    // 分裂子怪（马蜂）专属：母体死亡裂出的 2 个小怪用此造型
+    [Export] public Texture2D?[]? BeeIdleTextures;
+    [Export] public Texture2D?[]? BeeWalkTextures;
+    [Export] public int BeeIdleFrames = 4;
+    [Export] public int BeeWalkFrames = 4;
+
     private bool _autoSwitch;
     private string _current = "";
     private bool _lastVisible;
+    private EnemySkinKind _kind;
 
     public override void _Ready()
     {
@@ -41,10 +73,19 @@ public partial class SpriteAnimator : AnimatedSprite2D
     }
 
     /// <summary>
-    /// 对象池复用节点时不会再触发 _Ready，这里用可见性变化通知补上：
-    /// 敌人被回收到池（父节点 Visible=false）再租出（Visible=true）时，重新随机换皮。
-    /// 用 _lastVisible 沿检测，避免进入场景树时的重复随机。
+    /// 按皮肤类别换皮：Normal/Elite/Hive/Bee 各从自己的池随机选一套。
+    /// 对象池复用必须每次显式调用（回收→再租出会按上次状态再随机一次，以这里为准覆盖）。
     /// </summary>
+    public void ApplySkin(EnemySkinKind kind)
+    {
+        _kind = kind;
+        PickRandomTextureSet();
+        Rebuild();
+    }
+
+    /// <summary>对象池复用节点时不会再触发 _Ready，这里用可见性变化通知补上：
+    /// 敌人被回收到池（父节点 Visible=false）再租出（Visible=true）时，重新随机换皮。
+    /// 用 _lastVisible 沿检测，避免进入场景树时的重复随机。</summary>
     public override void _Notification(int what)
     {
         base._Notification(what);
@@ -60,21 +101,49 @@ public partial class SpriteAnimator : AnimatedSprite2D
         _lastVisible = vis;
     }
 
-    /// <summary>如果提供了 RandomIdleTextures/WalkTextures，随机选一套（同 idx）覆盖单纹理字段。</summary>
+    /// <summary>如果提供了对应池的纹理数组，随机选一套（同 idx）覆盖单纹理字段。</summary>
     private void PickRandomTextureSet()
     {
-        if (RandomIdleTextures == null || RandomIdleTextures.Length == 0) return;
+        // 按皮肤类别取池；池没配（可能 tscn 忘了加）就退回普通池，保证不白屏
+        var idles  = Pool(_kind == EnemySkinKind.Elite ? EliteIdleTextures : null,
+                          _kind == EnemySkinKind.Hive  ? HiveIdleTextures  : null,
+                          _kind == EnemySkinKind.Bee   ? BeeIdleTextures   : null,
+                          RandomIdleTextures);
+        if (idles == null || idles.Length == 0) return;
 
-        int idx = GD.RandRange(0, RandomIdleTextures.Length - 1);
-        IdleTexture = RandomIdleTextures[idx];
-        IdleFrames = RandomIdleFrames;
+        int idx = GD.RandRange(0, idles.Length - 1);
+        IdleTexture = idles[idx];
+        IdleFrames = FramesFor(_kind, isIdle: true);
 
-        if (RandomWalkTextures != null && idx < RandomWalkTextures.Length)
+        var walks = Pool(_kind == EnemySkinKind.Elite ? EliteWalkTextures : null,
+                         _kind == EnemySkinKind.Hive  ? HiveWalkTextures  : null,
+                         _kind == EnemySkinKind.Bee   ? BeeWalkTextures   : null,
+                         RandomWalkTextures);
+        if (walks != null && idx < walks.Length)
         {
-            WalkTexture = RandomWalkTextures[idx];
-            WalkFrames = RandomWalkFrames;
+            WalkTexture = walks[idx];
+            WalkFrames = FramesFor(_kind, isIdle: false);
+        }
+        else
+        {
+            WalkTexture = null;   // 上一只残留在对象池里的 walk 不能带到本只
         }
     }
+
+    /// <summary>把"分类专属池"与兜底普通池串起来：只取第一个非空的。</summary>
+    private static Texture2D?[]? Pool(Texture2D?[]? elite, Texture2D?[]? hive, Texture2D?[]? bee, Texture2D?[]? normal)
+        => elite is { Length: > 0 } ? elite
+         : hive  is { Length: > 0 } ? hive
+         : bee   is { Length: > 0 } ? bee
+         : normal;
+
+    private int FramesFor(EnemySkinKind kind, bool isIdle) => kind switch
+    {
+        EnemySkinKind.Elite => isIdle ? EliteIdleFrames : EliteWalkFrames,
+        EnemySkinKind.Hive  => isIdle ? HiveIdleFrames  : HiveWalkFrames,
+        EnemySkinKind.Bee   => isIdle ? BeeIdleFrames   : BeeWalkFrames,
+        _                   => isIdle ? RandomIdleFrames : RandomWalkFrames,
+    };
 
     /// <summary>用当前 Idle/WalkTexture 重建 SpriteFrames 并切回 idle 动画。</summary>
     private void Rebuild()

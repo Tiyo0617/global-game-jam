@@ -30,6 +30,13 @@ public partial class EnemyService : Node
         Bus.Sub<EntityDied>(this, OnEntityDied);
     }
 
+    /// <summary>
+    /// 分裂是否全局生效：敌人强化选到"分裂"词条，或调试开关强制开启。
+    /// SpawnDirector（母体变身马蜂窝）与死亡判定共用这一处，保证两者永远同步。
+    /// </summary>
+    public static bool SplitEnabled =>
+        DebugForceSplit || GameManager.I.EnemyStats.HasFlag(EnemyStat.FlagSplit);
+
     public void Init(PackedScene? scene)
     {
         if (scene == null)
@@ -49,7 +56,7 @@ public partial class EnemyService : Node
         // 注：存活上限机制已按策划要求移除（P2-15），场上敌人数量不再设限。
         // _active 列表仍保留 —— AliveCount（胜利条件的"场上清空"判定）依赖它。
         var e = _pool.Rent();
-        e.Configure(r.Position, r.Direction, r.SpeedMul, r.HP, r.Scale, r.IsTracker, r.CanSplit);
+        e.Configure(r.Position, r.Direction, r.SpeedMul, r.HP, r.Scale, r.IsTracker, r.CanSplit, r.SkinKind);
         _active.Add(e);
         Bus.Pub(new EnemySpawned(e));
     }
@@ -58,12 +65,9 @@ public partial class EnemyService : Node
     {
         if (d.Target is not EnemyBase eb) return;
 
-        // ---- 分裂：母体允许分裂 + 敌人线开启分裂词条 → 在 despawn 前刷 2 个小的 ----
-        // 双重判断：CanSplit（实例级，防小怪再裂）+ FlagSplit（全局词条开关）
-        bool flag = GameManager.I.EnemyStats.HasFlag(EnemyStat.FlagSplit);
-
-        // ⚠️ 调试分支：词条系统没好之前强制开启，验证完随 DebugForceSplit 一起移除
-        if (DebugForceSplit) flag = true;
+        // ---- 分裂：母体允许分裂 + 分裂全局开启 → 在 despawn 前刷 2 个小的 ----
+        // 双重判断：CanSplit（实例级，防小怪再裂）+ EnemyService.SplitEnabled（词条 or 调试）
+        bool flag = SplitEnabled;
 
         // ⚠️ 调试日志：仅 DebugForceSplit 开启时打印
         if (DebugForceSplit) GD.Print($"[分裂调试] 敌人死亡：CanSplit={eb.CanSplit}，Flag={flag}");
@@ -96,6 +100,7 @@ public partial class EnemyService : Node
                 Scale     = GameManager.I.Cfg.SplitScale,
                 IsTracker = false,
                 CanSplit  = false,             // 小怪不再裂
+                SkinKind  = EnemySkinKind.Bee, // 分裂子怪固定"马蜂"造型（bee_walk）
             });
         }
     }

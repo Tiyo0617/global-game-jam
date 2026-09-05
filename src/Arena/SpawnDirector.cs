@@ -61,6 +61,9 @@ public partial class SpawnDirector : Node
         int hp = (int)st.Get(EnemyStat.HP);
         float scale = st.Get(EnemyStat.BodyScale);
 
+        // 分裂全局开启时，会分裂的普通母体生前统一用"马蜂窝"造型（美术：马蜂窝会分裂为马蜂）
+        bool splitOn = EnemyService.SplitEnabled;
+
         // 四向出生：词条开启时每只敌人随机挑一条边出生；关闭时维持原"右边缘出生"。
         bool fourSides = st.HasFlag(EnemyStat.FlagSpawnFourSides);
 
@@ -90,6 +93,8 @@ public partial class SpawnDirector : Node
                 Scale     = scale,
                 IsTracker = false,
                 CanSplit  = true,   // 普通怪是"母体"，死亡可裂（分裂出的小怪由 EnemyService 设 false）
+                // 分裂词条开启 → 普通母体生前是马蜂窝；没开 → 鸟/虫/甲虫随机换皮
+                SkinKind  = splitOn ? EnemySkinKind.Hive : EnemySkinKind.Normal,
             });
         }
 
@@ -185,6 +190,7 @@ public partial class SpawnDirector : Node
             Scale     = baseScale * scaleMul,
             IsTracker = false,
             CanSplit  = true,   // 精英也是母体，死亡可裂（与普通怪一致）
+            SkinKind  = EnemySkinKind.Elite,   // 换皮：精英从考拉/鸽子池随机，普通怪永不出现这两种皮
         });
     }
 

@@ -8,9 +8,15 @@ namespace GGJ;
 /// </summary>
 public partial class Main : Node2D
 {
+    /// <summary>战斗场地背景图。换图只改这里，别的不用动。</summary>
+    private const string BackgroundPath = "res://art/bg_topdown_1280x720.png";
+
     public override void _Ready()
     {
         ArenaBounds.Init(GetViewportRect());
+
+        // 背景永远最先加、层级最低，玩家/敌人才能画在地面上
+        AddBackground();
 
         // .tres 缺失或损坏时用代码默认值兜底，保证永远跑得起来
         GameManager.I.Cfg     = Res.Load<RunConfig>("res://data/run_config.tres")   ?? RunConfig.CreateDefault();
@@ -49,6 +55,26 @@ public partial class Main : Node2D
 
         rounds.Init(spawner, enemies);
         rounds.StartRun();
+    }
+
+    /// <summary>战斗背景：1280x720 铺满整屏、ZIndex 最低，永远垫底。图缺失只警告不报错。</summary>
+    private void AddBackground()
+    {
+        var tex = Res.Load<Texture2D>(BackgroundPath);
+        if (tex == null)
+        {
+            GD.PushWarning($"[Main] 找不到战斗背景图 {BackgroundPath}，本次无背景。");
+            return;
+        }
+
+        var bg = new Sprite2D
+        {
+            Texture = tex,
+            Centered = true,
+            Position = ArenaBounds.Center,
+            ZIndex = -100,
+        };
+        AddChild(bg);
     }
 
     private bool TryAddUi(string path)

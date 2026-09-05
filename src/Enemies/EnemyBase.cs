@@ -12,12 +12,14 @@ namespace GGJ;
 public partial class EnemyBase : CharacterBody2D
 {
     private Health _health = null!;
+    private SpriteAnimator _sprite = null!;
     private float _baseSpeed = 120f;
     private float _speedMul = 1f;
     private int _bounceCount;
     private bool _isTracker;
     /// <summary>死亡时是否允许分裂（分裂出的小怪为 false，防无限裂）。</summary>
     private bool _canSplit;
+    private EnemySkinKind _skinKind;
 
     public bool Active { get; private set; }
 
@@ -27,6 +29,7 @@ public partial class EnemyBase : CharacterBody2D
     public override void _Ready()
     {
         _health = GetNode<Health>("Health");
+        _sprite = GetNode<SpriteAnimator>("AnimatedSprite2D");
         AddToGroup("enemy");
 
         CollisionLayer = Layers.Enemy;
@@ -37,11 +40,12 @@ public partial class EnemyBase : CharacterBody2D
     /// <summary>
     /// 从对象池租用时调用。⚠️ 新加字段必须在这里显式重置，防止上一只的残留状态。
     /// </summary>
-    public void Configure(Vector2 pos, Vector2 dir, float speedMul, int hp, float scale, bool isTracker, bool canSplit)
+    public void Configure(Vector2 pos, Vector2 dir, float speedMul, int hp, float scale, bool isTracker, bool canSplit, EnemySkinKind skinKind)
     {
         GlobalPosition = pos;
         _isTracker = isTracker;
         _canSplit = canSplit;      // ⚠️ 对象池复用，必须显式重置（坑 #4）
+        _skinKind = skinKind;      // ⚠️ 必须显式重置：皮只有这一处能覆盖
         _speedMul = speedMul;
 
         _baseSpeed = isTracker
@@ -57,6 +61,10 @@ public partial class EnemyBase : CharacterBody2D
 
         Velocity = dir.Normalized() * _baseSpeed * _speedMul;
         Active = true;
+
+        // ⚠️ 必须在速度等字段就绪后换皮；对象池复用时 Rent 的可见性随机发生在 Configure 前，
+        //    这里以本次精英/普通状态为准覆盖一次（皮随 spawn 请求随机，不是固定一只怪）。
+        _sprite.ApplySkin(_skinKind);
     }
 
     public void Deactivate()
