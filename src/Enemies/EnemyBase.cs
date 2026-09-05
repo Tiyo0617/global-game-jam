@@ -16,8 +16,13 @@ public partial class EnemyBase : CharacterBody2D
     private float _speedMul = 1f;
     private int _bounceCount;
     private bool _isTracker;
+    /// <summary>死亡时是否允许分裂（分裂出的小怪为 false，防无限裂）。</summary>
+    private bool _canSplit;
 
     public bool Active { get; private set; }
+
+    /// <summary>本只敌人死亡时是否允许分裂（供 EnemyService 判断要不要发分裂请求）。</summary>
+    public bool CanSplit => _canSplit;
 
     public override void _Ready()
     {
@@ -29,10 +34,14 @@ public partial class EnemyBase : CharacterBody2D
         MotionMode     = MotionModeEnum.Floating;
     }
 
-    public void Configure(Vector2 pos, Vector2 dir, float speedMul, int hp, float scale, bool isTracker)
+    /// <summary>
+    /// 从对象池租用时调用。⚠️ 新加字段必须在这里显式重置，防止上一只的残留状态。
+    /// </summary>
+    public void Configure(Vector2 pos, Vector2 dir, float speedMul, int hp, float scale, bool isTracker, bool canSplit)
     {
         GlobalPosition = pos;
         _isTracker = isTracker;
+        _canSplit = canSplit;      // ⚠️ 对象池复用，必须显式重置（坑 #4）
         _speedMul = speedMul;
 
         _baseSpeed = isTracker
@@ -97,9 +106,12 @@ public partial class EnemyBase : CharacterBody2D
     /// <summary>
     /// 撞墙回调：加速反弹，带衰减防后期指数爆炸。
     /// 第 n 次增量 = AccelBase × AccelDecay^(n-1)，硬顶 AccelCap。
+    /// ⚠️ 追踪怪免疫敌人线所有强化（策划案"嗅探者"规则）：不参与加速反弹。
     /// </summary>
     private void OnBounced()
     {
+        if (_isTracker) return;   // 追踪怪恒定速度（TrackerSpeed），免疫一切敌人线 buff
+
         var st = GameManager.I.EnemyStats;
         if (!st.HasFlag(EnemyStat.FlagAccelOnBounce)) return;
 

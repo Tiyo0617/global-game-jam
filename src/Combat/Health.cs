@@ -38,14 +38,24 @@ public partial class Health : Node
 
     public void ClearInvincible() => _invTimer = 0f;
 
-    /// <summary>返回 true 表示本次伤害致死。</summary>
+    /// <summary>
+    /// 返回 true 表示本次伤害致死。
+    /// ⚠️ 受击无敌帧只给玩家（策划案：仅玩家受击"进入1.5s无敌帧"，敌人条目无此描述）。
+    /// 敌人无受击无敌帧 —— 否则连发/速射/激光词条对单体无效，精英怪变成打不动的肉盾。
+    /// </summary>
     public bool ApplyDamage(float amount)
     {
         if (Current <= 0) return false;
         if (Invincible) return false;
 
         Current -= Mathf.Max(1, (int)amount);
-        StartInvincible(GameManager.I.Feel?.InvincibleTime ?? 1.5f);
+
+        // 只有宿主是玩家才启动受击无敌帧。Health 挂在实体（Player / EnemyBase）下面，
+        // GetParent() 即宿主；Player._Ready 里已 AddToGroup("player")。
+        if (GetParent() is Node ownerNode && ownerNode.IsInGroup("player"))
+        {
+            StartInvincible(GameManager.I.Feel?.InvincibleTime ?? 1.5f);
+        }
 
         if (Current <= 0)
         {

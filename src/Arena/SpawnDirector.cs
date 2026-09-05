@@ -6,12 +6,23 @@ namespace GGJ;
 /// 波次刷怪导演。**定时推进**：到点就刷，不等上一波清完（GDD §3.7，刻意的压迫感）。
 ///
 /// TODO(程序B)：
-///   · 四向 FlagSpawnFourSides —— 出生点改为整个屏幕边缘，方向随机
 ///   · 精英 FlagElite —— 每轮每波按概率多刷 1 个大体积慢速单位
 ///   · 追踪怪 FlagTracker —— 每波额外刷若干追踪单位（发 SpawnEnemyRequest 时 IsTracker = true）
 /// </summary>
 public partial class SpawnDirector : Node
 {
+    // ⚠️ 调试开关：true = 强制开启四向出生。
+    private const bool DebugForceFourSides = false;
+
+    // ⚠️ 调试开关：true = 强制开启精英怪，且跳过概率判定每波必出。
+    private const bool DebugForceElite = false;
+
+    // ⚠️ 调试开关：true = 强制开启追踪怪。
+    private const bool DebugForceTracker = false;
+
+    /// <summary>精英怪体积倍率（EnemyStat 无对应枚举，按"大体积"设计意图写死 2 倍）。</summary>
+    private const float EliteScaleMul = 2f;
+
     private WaveConfig _wave = WaveConfig.Create(3, 3, 5f);
     private int _round = 1;
     private int _wavesSpawned;
@@ -57,21 +68,47 @@ public partial class SpawnDirector : Node
         float scale = st.Get(EnemyStat.BodyScale);
         if (scale <= 0f) scale = 1f;
 
+        // 四向出生：词条开启时每只敌人随机挑一条边出生；关闭时维持原"右边缘出生"。
+        bool fourSides = st.HasFlag(EnemyStat.FlagSpawnFourSides);
+
+        // ⚠️ 调试分支：词条系统没好之前强制开启，验证完随 DebugForceFourSides 一起移除
+        if (DebugForceFourSides) fourSides = true;
+
         for (int i = 0; i < count; i++)
         {
-            var edge = ArenaBounds.Edge.Right;      // TODO(程序B)：四向出生
+            // 开启：Rng.RangeInt(0,4) 随机选边（0..3 对应 Right/Left/Top/Bottom）
+            // 关闭：固定右边缘（原行为）
+            var edge = fourSides
+                ? (ArenaBounds.Edge)Rng.RangeInt(0, 4)
+                : ArenaBounds.Edge.Right;
+
+            // 开启：朝内 ±45° 扇形随机方向（策划案"行动方向改为随机"）；
+            // 关闭：垂直向内（右边缘 → 向左，原行为）
+            Vector2 dir = fourSides
+                ? RandomInwardDirection(edge)
+                : ArenaBounds.DefaultDirFrom(edge);
+
             Bus.Pub(new SpawnEnemyRequest
             {
                 Position  = ArenaBounds.RandomPointOnEdge(edge),
-                Direction = ArenaBounds.DefaultDirFrom(edge),
+                Direction = dir,
                 SpeedMul  = 1f,
                 HP        = hp,
                 Scale     = scale,
                 IsTracker = false,
+                CanSplit  = true,   // 普通怪是"母体"，死亡可裂（分裂出的小怪由 EnemyService 设 false）
             });
         }
 
         Bus.Pub(new WaveStarted(_wavesSpawned, count));
+
+        // ---- 精英怪：每轮每波按概率额外刷 1 个，不占普通波次 count ----
+        // ⚠️ 策划案规则：是"每轮每波"都判，不是"每轮只刷 1 个"。
+        TrySpawnElite(st);
+
+        // ---- 追踪怪：每波额外刷 TrackerCount 个，持续追踪玩家 ----
+        // ⚠️ 血量/速度恒定读 TrackerHP/TrackerSpeed，免疫敌人线所有强化
+        TrySpawnTrackers(st);
 
         // ⚠️ 必须在这里重置计时器。若留给下一帧去减，0 - delta &lt; 0 会立刻再刷一波，
         //    表现成"首波和第二波同时出现"。
@@ -81,6 +118,128 @@ public partial class SpawnDirector : Node
         {
             _running = false;
             Bus.Pub(new AllWavesSpawned(_round));
+        }
+    }
+
+    /// <summary>
+    /// 四向出生时生成"大致朝场内"的随机方向。
+    /// 以垂直向内为基准 ±45° 扇形随机：既满足策划案"方向随机"，
+    /// 又保证一定朝场内飞（完全随机会有敌人出生后立即朝外飞出屏，体验差）。
+    /// </summary>
+    private static Vector2 RandomInwardDirection(ArenaBounds.Edge edge)
+    {
+        // 各边缘的垂直朝内基准角（度）：0=右、90=下（Godot 2D Y 轴向下，正角度=顺时针）
+        float baseAngleDeg = edge switch
+        {
+            ArenaBounds.Edge.Right  => 180f,   // 右边缘出生 → 基准朝左
+            ArenaBounds.Edge.Left   => 0f,     // 左边缘出生 → 基准朝右
+            ArenaBounds.Edge.Top    => 90f,    // 上边缘出生 → 基准朝下
+            ArenaBounds.Edge.Bottom => -90f,   // 下边缘出生 → 基准朝上
+            _                       => 180f,
+        };
+
+        float offset = Rng.Range(-45f, 45f);               // ±45° 扇形随机
+        float angle = Mathf.DegToRad(baseAngleDeg + offset);
+        return new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
+    }
+
+    /// <summary>
+    /// 精英怪（策划案"巨型个体"）：每轮每波按 EliteChance 概率额外刷 1 个。
+    /// 属性：血量 HP×EliteHPMul(5)、移速×EliteSpeedMul(0.4 极慢)、体积×2。
+    /// 出生边复用四向逻辑（未开四向时从右边缘出生）。
+    /// </summary>
+    private void TrySpawnElite(StatBlock st)
+    {
+        bool enabled = st.HasFlag(EnemyStat.FlagElite);
+
+        // ⚠️ 调试分支：词条系统没好之前强制开启，验证完随 DebugForceElite 一起移除
+        if (DebugForceElite) enabled = true;
+
+        if (!enabled) return;
+
+        float chance = st.Get(EnemyStat.EliteChance);
+        if (chance <= 0f) chance = 0.20f;   // 策划案 P=20%
+
+        // ⚠️ 调试时跳过概率判定（每波必出），方便观察
+        if (!DebugForceElite && !Rng.Chance(chance)) return;
+
+        // 出生边 + 方向：复用四向逻辑保持一致
+        bool fourSides = st.HasFlag(EnemyStat.FlagSpawnFourSides);
+        if (DebugForceFourSides) fourSides = true;
+        var edge = fourSides
+            ? (ArenaBounds.Edge)Rng.RangeInt(0, 4)
+            : ArenaBounds.Edge.Right;
+        Vector2 dir = fourSides
+            ? RandomInwardDirection(edge)
+            : ArenaBounds.DefaultDirFrom(edge);
+
+        // 精英属性 = 基础值 × 词条倍率
+        int baseHP = (int)st.Get(EnemyStat.HP);
+        int eliteHP = Mathf.Max(1, (int)(baseHP * st.Get(EnemyStat.EliteHPMul)));   // 防 0 血
+        float speedMul = st.Get(EnemyStat.EliteSpeedMul);
+        if (speedMul <= 0f) speedMul = 0.4f;   // 策划案移速 ×0.4（极慢）
+        float baseScale = st.Get(EnemyStat.BodyScale);
+        if (baseScale <= 0f) baseScale = 1f;
+
+        // ⚠️ 调试日志：仅 DebugForceElite 开启时打印
+        if (DebugForceElite) GD.Print($"[精英调试] 第 {_wavesSpawned} 波刷出精英：HP={eliteHP} 速度x{speedMul} 体积x{baseScale * EliteScaleMul}");
+
+        Bus.Pub(new SpawnEnemyRequest
+        {
+            Position  = ArenaBounds.RandomPointOnEdge(edge),
+            Direction = dir,
+            SpeedMul  = speedMul,
+            HP        = eliteHP,
+            Scale     = baseScale * EliteScaleMul,
+            IsTracker = false,
+            CanSplit  = true,   // 精英也是母体，死亡可裂（与普通怪一致）
+        });
+    }
+
+    /// <summary>
+    /// 追踪怪（策划案"嗅探者"）：每波额外刷 TrackerCount 个，持续追踪玩家。
+    /// ⚠️ 血量/速度恒定读 TrackerHP/TrackerSpeed，❌ 不读 HP/MoveSpeed——
+    ///    免疫敌人线所有强化（EnemyBase.Configure 与 OnBounced 里已处理）。
+    /// </summary>
+    private void TrySpawnTrackers(StatBlock st)
+    {
+        bool enabled = st.HasFlag(EnemyStat.FlagTracker);
+
+        // ⚠️ 调试分支：词条系统没好之前强制开启，验证完随 DebugForceTracker 一起移除
+        if (DebugForceTracker) enabled = true;
+
+        if (!enabled) return;
+
+        int count = (int)st.Get(EnemyStat.TrackerCount);
+        if (count <= 0) return;
+
+        int trackerHP = Mathf.Max(1, (int)st.Get(EnemyStat.TrackerHP));   // 策划案初值 1
+        bool fourSides = st.HasFlag(EnemyStat.FlagSpawnFourSides);
+        if (DebugForceFourSides) fourSides = true;
+
+        // ⚠️ 调试日志：仅 DebugForceTracker 开启时打印
+        if (DebugForceTracker) GD.Print($"[追踪调试] 第 {_wavesSpawned} 波刷出 {count} 只追踪怪：HP={trackerHP}");
+
+        for (int i = 0; i < count; i++)
+        {
+            // 追踪怪会主动找玩家，出生边/方向只影响出场瞬间；复用四向逻辑保持一致
+            var edge = fourSides
+                ? (ArenaBounds.Edge)Rng.RangeInt(0, 4)
+                : ArenaBounds.Edge.Right;
+            Vector2 dir = fourSides
+                ? RandomInwardDirection(edge)
+                : ArenaBounds.DefaultDirFrom(edge);
+
+            Bus.Pub(new SpawnEnemyRequest
+            {
+                Position  = ArenaBounds.RandomPointOnEdge(edge),
+                Direction = dir,
+                SpeedMul  = 1f,      // 追踪怪速度由 EnemyBase 读 TrackerSpeed 决定，此字段不生效
+                HP        = trackerHP,
+                Scale     = 1f,      // 追踪怪体积恒定，不随 BodyScale 变化
+                IsTracker = true,
+                CanSplit  = false,   // 追踪怪恒定属性，不参与敌人线强化（不分裂）
+            });
         }
     }
 }
