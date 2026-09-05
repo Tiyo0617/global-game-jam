@@ -63,7 +63,7 @@ public partial class EnemyBase : CharacterBody2D
         Active = true;
 
         // ⚠️ 必须在速度等字段就绪后换皮；对象池复用时 Rent 的可见性随机发生在 Configure 前，
-        //    这里以本次精英/普通状态为准覆盖一次（皮随 spawn 请求随机，不是固定一只怪）。
+        //    这里以本次皮肤类别（普通/精英/马蜂窝/马蜂）为准覆盖一次（皮随 spawn 请求，不是固定一只怪）。
         _sprite.ApplySkin(_skinKind);
     }
 

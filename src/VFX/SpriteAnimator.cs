@@ -7,12 +7,14 @@ public enum EnemySkinKind
 {
     /// <summary>普通怪：从默认池（鸟/虫/甲虫）随机。</summary>
     Normal = 0,
-    /// <summary>精英怪（Boss）：从考拉/鸽子大体积池随机。</summary>
+    /// <summary>精英怪（Boss）：从鸽子大体积池随机（考拉已移作追踪怪造型）。</summary>
     Elite = 1,
-    /// <summary>分裂母体：马蜂窝。分裂词条开启后，普通母体生前即用此造型。</summary>
+    /// <summary>分裂怪（马蜂窝）：分裂词条开启后每波额外刷出的独立母体，死亡裂出马蜂。</summary>
     Hive = 2,
     /// <summary>分裂子怪：马蜂。母体被打死后裂出的 2 个小怪用此造型。</summary>
     Bee = 3,
+    /// <summary>追踪怪：固定考拉造型（考拉不再作为精英皮出现）。</summary>
+    Tracker = 4,
 }
 
 /// <summary>
@@ -46,7 +48,7 @@ public partial class SpriteAnimator : AnimatedSprite2D
     [Export] public int EliteIdleFrames = 1;
     [Export] public int EliteWalkFrames = 4;
 
-    // 分裂母体（马蜂窝）专属：分裂词条开启后的普通母体生前用此造型
+    // 分裂怪（马蜂窝）专属：分裂词条开启后每波额外刷出的独立母体用此造型
     [Export] public Texture2D?[]? HiveIdleTextures;
     [Export] public Texture2D?[]? HiveWalkTextures;
     [Export] public int HiveIdleFrames = 4;
@@ -57,6 +59,12 @@ public partial class SpriteAnimator : AnimatedSprite2D
     [Export] public Texture2D?[]? BeeWalkTextures;
     [Export] public int BeeIdleFrames = 4;
     [Export] public int BeeWalkFrames = 4;
+
+    // 追踪怪（考拉）专属：固定考拉造型，普通怪/精英永不出现
+    [Export] public Texture2D?[]? TrackerIdleTextures;
+    [Export] public Texture2D?[]? TrackerWalkTextures;
+    [Export] public int TrackerIdleFrames = 1;
+    [Export] public int TrackerWalkFrames = 4;
 
     private bool _autoSwitch;
     private string _current = "";
@@ -73,7 +81,7 @@ public partial class SpriteAnimator : AnimatedSprite2D
     }
 
     /// <summary>
-    /// 按皮肤类别换皮：Normal/Elite/Hive/Bee 各从自己的池随机选一套。
+    /// 按皮肤类别换皮：Normal/Elite/Hive/Bee/Tracker 各从自己的池随机选一套。
     /// 对象池复用必须每次显式调用（回收→再租出会按上次状态再随机一次，以这里为准覆盖）。
     /// </summary>
     public void ApplySkin(EnemySkinKind kind)
@@ -81,6 +89,7 @@ public partial class SpriteAnimator : AnimatedSprite2D
         _kind = kind;
         PickRandomTextureSet();
         Rebuild();
+        ApplyDisplayScale();
     }
 
     /// <summary>对象池复用节点时不会再触发 _Ready，这里用可见性变化通知补上：
@@ -105,9 +114,10 @@ public partial class SpriteAnimator : AnimatedSprite2D
     private void PickRandomTextureSet()
     {
         // 按皮肤类别取池；池没配（可能 tscn 忘了加）就退回普通池，保证不白屏
-        var idles  = Pool(_kind == EnemySkinKind.Elite ? EliteIdleTextures : null,
-                          _kind == EnemySkinKind.Hive  ? HiveIdleTextures  : null,
-                          _kind == EnemySkinKind.Bee   ? BeeIdleTextures   : null,
+        var idles  = Pool(_kind == EnemySkinKind.Elite   ? EliteIdleTextures   : null,
+                          _kind == EnemySkinKind.Hive    ? HiveIdleTextures    : null,
+                          _kind == EnemySkinKind.Bee     ? BeeIdleTextures     : null,
+                          _kind == EnemySkinKind.Tracker ? TrackerIdleTextures : null,
                           RandomIdleTextures);
         if (idles == null || idles.Length == 0) return;
 
@@ -115,9 +125,10 @@ public partial class SpriteAnimator : AnimatedSprite2D
         IdleTexture = idles[idx];
         IdleFrames = FramesFor(_kind, isIdle: true);
 
-        var walks = Pool(_kind == EnemySkinKind.Elite ? EliteWalkTextures : null,
-                         _kind == EnemySkinKind.Hive  ? HiveWalkTextures  : null,
-                         _kind == EnemySkinKind.Bee   ? BeeWalkTextures   : null,
+        var walks = Pool(_kind == EnemySkinKind.Elite   ? EliteWalkTextures   : null,
+                         _kind == EnemySkinKind.Hive    ? HiveWalkTextures    : null,
+                         _kind == EnemySkinKind.Bee     ? BeeWalkTextures     : null,
+                         _kind == EnemySkinKind.Tracker ? TrackerWalkTextures : null,
                          RandomWalkTextures);
         if (walks != null && idx < walks.Length)
         {
@@ -128,21 +139,44 @@ public partial class SpriteAnimator : AnimatedSprite2D
         {
             WalkTexture = null;   // 上一只残留在对象池里的 walk 不能带到本只
         }
+
+        ApplyDisplayScale();
+    }
+
+    /// <summary>
+    /// 大帧贴图归一化：把"512 宽精灵表（每帧 128px）"缩半显示，与普通怪（每帧 64px）体积一致。
+    /// 原因：精英（鸽子）/追踪怪（考拉）素材是普通怪的 2 倍像素宽，若不缩放，贴图会明显
+    /// 大于碰撞体，玩家打中"翅膀/边缘"却不掉血（命中判定是碰撞圆，不是贴图）。
+    /// 归一只影响视觉显示，不碰父节点 Scale（碰撞体积由父节点控制，保持精英/追踪的体积语义）。
+    /// </summary>
+    private void ApplyDisplayScale()
+    {
+        float mul = 1f;
+        if (IdleTexture != null && _kind is EnemySkinKind.Elite or EnemySkinKind.Tracker)
+        {
+            int frameW = Mathf.Max(1, IdleTexture.GetWidth() / Mathf.Max(1, IdleFrames));
+            // 目标：最终画面宽度接近普通怪帧宽 64px（相对父 scale 而言）。
+            // 例如帧宽 128 → mul=0.5；若以后换 64px 素材，mul 自动回 1，无需改配置。
+            mul = Mathf.Clamp(64f / frameW, 0.25f, 1f);
+        }
+        Scale = Vector2.One * mul;
     }
 
     /// <summary>把"分类专属池"与兜底普通池串起来：只取第一个非空的。</summary>
-    private static Texture2D?[]? Pool(Texture2D?[]? elite, Texture2D?[]? hive, Texture2D?[]? bee, Texture2D?[]? normal)
-        => elite is { Length: > 0 } ? elite
-         : hive  is { Length: > 0 } ? hive
-         : bee   is { Length: > 0 } ? bee
+    private static Texture2D?[]? Pool(Texture2D?[]? elite, Texture2D?[]? hive, Texture2D?[]? bee, Texture2D?[]? tracker, Texture2D?[]? normal)
+        => elite   is { Length: > 0 } ? elite
+         : hive    is { Length: > 0 } ? hive
+         : bee     is { Length: > 0 } ? bee
+         : tracker is { Length: > 0 } ? tracker
          : normal;
 
     private int FramesFor(EnemySkinKind kind, bool isIdle) => kind switch
     {
-        EnemySkinKind.Elite => isIdle ? EliteIdleFrames : EliteWalkFrames,
-        EnemySkinKind.Hive  => isIdle ? HiveIdleFrames  : HiveWalkFrames,
-        EnemySkinKind.Bee   => isIdle ? BeeIdleFrames   : BeeWalkFrames,
-        _                   => isIdle ? RandomIdleFrames : RandomWalkFrames,
+        EnemySkinKind.Elite   => isIdle ? EliteIdleFrames   : EliteWalkFrames,
+        EnemySkinKind.Hive    => isIdle ? HiveIdleFrames    : HiveWalkFrames,
+        EnemySkinKind.Bee     => isIdle ? BeeIdleFrames     : BeeWalkFrames,
+        EnemySkinKind.Tracker => isIdle ? TrackerIdleFrames : TrackerWalkFrames,
+        _                     => isIdle ? RandomIdleFrames  : RandomWalkFrames,
     };
 
     /// <summary>用当前 Idle/WalkTexture 重建 SpriteFrames 并切回 idle 动画。</summary>
@@ -181,8 +215,20 @@ public partial class SpriteAnimator : AnimatedSprite2D
         float vx = body.Velocity.X;
         if (Mathf.Abs(vx) < 1f) return;   // 静止不翻转，保持当前朝向
 
-        FlipH = ArtFacesLeft ? (vx > 0f) : (vx < 0f);
+        FlipH = ArtFacesLeftForKind() ? (vx > 0f) : (vx < 0f);
     }
+
+    /// <summary>
+    /// 素材默认朝向的基准，按皮肤类别区分——不同片的动物头朝向不同：
+    /// - 普通怪（虫/鸟/甲虫）：美术头朝右，基准 = ArtFacesLeft(false)（不翻转时朝右）。
+    /// - 精英（鸽子）与追踪怪（考拉）：这两张精灵表头朝左，需用"头朝左"基准反向翻转，
+    ///   否则跟着普通怪的基准会变成"头朝移动反方向"（从右往左走却头朝右）。
+    /// </summary>
+    private bool ArtFacesLeftForKind() => _kind switch
+    {
+        EnemySkinKind.Elite or EnemySkinKind.Tracker => true,
+        _ => ArtFacesLeft,
+    };
 
     private void BuildFrames()
     {

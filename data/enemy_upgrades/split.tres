@@ -5,7 +5,7 @@
 [resource]
 script = ExtResource("1_scr")
 DisplayName = "分裂"
-Description = "分裂：敌人死亡时分裂成 2 个小的（1 血、速度 150%）（主题名待定）"
+Description = "分裂：每波额外出现马蜂窝，被击败后裂出 2 只马蜂"
 Rarity = 1
 MaxStack = 1
 IsMechanic = true

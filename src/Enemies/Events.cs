@@ -11,8 +11,8 @@ public struct SpawnEnemyRequest
     public float Scale;
     public bool IsTracker;
     /// <summary>
-    /// 死亡时是否允许分裂（配合 FlagSplit 词条）。
-    /// 普通怪 / 精英 = true；分裂出的小怪 = false（防无限裂）。
+    /// 死亡时是否允许分裂（配合分裂词条刷出的独立马蜂窝个体）。
+    /// 只有马蜂窝 = true；普通怪/精英/追踪怪/分裂出的小怪均 = false。
     /// struct 字段默认 false，所以漏传时安全地表现为"不可分裂"。
     /// </summary>
     public bool CanSplit;
@@ -20,9 +20,10 @@ public struct SpawnEnemyRequest
     /// <summary>
     /// 皮肤类别：决定敌人从哪个贴图池随机换皮。
     /// - Normal：普通池（鸟/虫/甲虫随机）
-    /// - Elite：精英池（考拉/鸽子随机）
-    /// - Hive：马蜂窝母体（分裂词条开启后的普通母体生前造型）
-    /// - Bee：马蜂（分裂出的子怪造型）
+    /// - Elite：精英池（鸽子；考拉已移作追踪怪造型）
+    /// - Hive：马蜂窝（分裂词条开启后每波额外刷出的独立母体，死亡裂出马蜂）
+    /// - Bee：马蜂（马蜂窝死亡裂出的子怪造型）
+    /// - Tracker：追踪怪（固定考拉，不再随机普通皮）
     /// struct 默认值 = Normal，漏传时安全落到普通随机皮。
     /// </summary>
     public EnemySkinKind SkinKind;

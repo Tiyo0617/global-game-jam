@@ -39,6 +39,9 @@ public partial class RunConfig : Resource
     [Export] public int SplitHP { get; set; } = 1;                    // 分裂小怪血量
     [Export] public float SplitSpeedMul { get; set; } = 1.5f;         // 分裂小怪速度倍率
     [Export] public float SplitScale { get; set; } = 0.5f;            // 分裂小怪体积
+    [Export] public int SplitHivePerWave { get; set; } = 2;           // 每波额外刷出的马蜂窝（分裂母体）数量
+    [Export] public float SplitHiveHPMul { get; set; } = 2f;          // 马蜂窝血量倍率（基础 HP×该值，母体比普通怪耐打）
+    [Export] public float SplitHiveSpeedMul { get; set; } = 0.6f;     // 马蜂窝移速倍率（巢慢速漂浮，快起来不像巢）
 
     // ---- 吸血与成长（撞击流两条腿）默认值 ----
     [Export] public int LifestealKills { get; set; } = 4;        // 吸血：击杀多少个回一次血
@@ -92,6 +95,9 @@ public partial class RunConfig : Resource
         SplitHP = 1,
         SplitSpeedMul = 1.5f,
         SplitScale = 0.5f,
+        SplitHivePerWave = 2,
+        SplitHiveHPMul = 2f,
+        SplitHiveSpeedMul = 0.6f,
         Waves = new Godot.Collections.Array<WaveConfig>
         {
             WaveConfig.Create(3, 3, 5.0f), WaveConfig.Create(3, 4, 5.0f),

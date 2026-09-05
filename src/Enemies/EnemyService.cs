@@ -31,8 +31,10 @@ public partial class EnemyService : Node
     }
 
     /// <summary>
-    /// 分裂是否全局生效：敌人强化选到"分裂"词条，或调试开关强制开启。
-    /// SpawnDirector（母体变身马蜂窝）与死亡判定共用这一处，保证两者永远同步。
+    /// 分裂词条是否全局生效（FlagSplit 或调试开关）。
+    /// SpawnDirector 用它决定"每波是否额外刷独立马蜂窝个体"，
+    /// 死亡判定用它配合 CanSplit（只有马蜂窝为 true）触发裂巢。
+    /// 共用这一处，保证"刷出来"和"会裂"永远同步。
     /// </summary>
     public static bool SplitEnabled =>
         DebugForceSplit || GameManager.I.EnemyStats.HasFlag(EnemyStat.FlagSplit);
@@ -65,8 +67,8 @@ public partial class EnemyService : Node
     {
         if (d.Target is not EnemyBase eb) return;
 
-        // ---- 分裂：母体允许分裂 + 分裂全局开启 → 在 despawn 前刷 2 个小的 ----
-        // 双重判断：CanSplit（实例级，防小怪再裂）+ EnemyService.SplitEnabled（词条 or 调试）
+        // ---- 分裂：只有马蜂窝（CanSplit=true）被打死才裂，在 despawn 前刷 2 只马蜂 ----
+        // 双重判断：CanSplit（实例级，只有马蜂窝为 true）+ SplitEnabled（词条/调试开关）
         bool flag = SplitEnabled;
 
         // ⚠️ 调试日志：仅 DebugForceSplit 开启时打印
