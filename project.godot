@@ -11,13 +11,14 @@ config_version=5
 [application]
 
 config/name="GlobalGameJam"
-run/main_scene="res://Main.tscn"
+run/main_scene="res://Scenes/ui/main_menu.tscn"
 config/features=PackedStringArray("4.5", "C#", "GL Compatibility")
 config/icon="res://icon.svg"
 
 [autoload]
 
 GameManager="*res://src/Core/GameManager.cs"
+SaveService="*res://src/UI/SaveService.cs"
 
 [display]
 

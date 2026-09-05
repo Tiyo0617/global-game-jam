@@ -76,7 +76,7 @@ public partial class Player : CharacterBody2D
 
     private void UpdateBlink()
     {
-        var sprite = GetNodeOrNull<Sprite2D>("Sprite2D");
+        var sprite = GetNodeOrNull<AnimatedSprite2D>("AnimatedSprite2D");
         if (sprite == null) return;
         sprite.Visible = !_health.Invincible || (int)(Time.GetTicksMsec() / 80) % 2 == 0;
     }

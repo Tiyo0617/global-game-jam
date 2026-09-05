@@ -1,15 +1,17 @@
-[gd_scene load_steps=7 format=3 uid="uid://cwnwj8k2q7xlx"]
+[gd_scene load_steps=9 format=3 uid="uid://cwnwj8k2q7xlx"]
 
 [ext_resource type="Script" path="res://src/Player/Player.cs" id="1_ply"]
 [ext_resource type="Script" path="res://src/Combat/Health.cs" id="2_hp"]
 [ext_resource type="Script" path="res://src/Player/Weapon.cs" id="3_wp"]
-[ext_resource type="Texture2D" path="res://art/player.svg" id="4_tex"]
+[ext_resource type="Script" path="res://src/VFX/SpriteAnimator.cs" id="4_anim"]
+[ext_resource type="Texture2D" path="res://art/anim/player_idle.png" id="5_tex_idle"]
+[ext_resource type="Texture2D" path="res://art/anim/player_walk.png" id="6_tex_walk"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_ply"]
 radius = 14.0
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_hurt"]
-radius = 14.0
+radius = 20.0
 
 [node name="Player" type="CharacterBody2D"]
 collision_layer = 1
@@ -17,8 +19,14 @@ collision_mask = 2
 motion_mode = 1
 script = ExtResource("1_ply")
 
-[node name="Sprite2D" type="Sprite2D" parent="."]
-texture = ExtResource("4_tex")
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
+script = ExtResource("4_anim")
+flip_h = true
+IdleTexture = ExtResource("5_tex_idle")
+IdleFrames = 2
+WalkTexture = ExtResource("6_tex_walk")
+WalkFrames = 4
+AnimSpeed = 10.0
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("CircleShape2D_ply")
