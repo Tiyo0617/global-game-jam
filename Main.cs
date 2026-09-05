@@ -92,14 +92,14 @@ public partial class Main : Node2D
         ps.SetBase(PlayerStat.HitboxScale, 1f);
         ps.SetBase(PlayerStat.LifestealKills, 0f);
         ps.SetBase(PlayerStat.LifestealAmount, 0f);
-        ps.SetBase(PlayerStat.DashRange, 120f);
-        ps.SetBase(PlayerStat.DashCooldown, 3f);
-        ps.SetBase(PlayerStat.RicochetChance, 0.5f);
+        ps.SetBase(PlayerStat.DashRange, cfg.DashRange);
+        ps.SetBase(PlayerStat.DashCooldown, cfg.DashCooldown);
+        ps.SetBase(PlayerStat.RicochetChance, cfg.RicochetChance);
         ps.SetBase(PlayerStat.FlagLaser, 0f);
         ps.SetBase(PlayerStat.FlagRicochet, 0f);
         ps.SetBase(PlayerStat.FlagDash, 0f);
         ps.SetBase(PlayerStat.FlagDeathblade, 0f);
-        ps.SetBase(PlayerStat.DeathbladeWindow, 8f);
+        ps.SetBase(PlayerStat.DeathbladeWindow, cfg.DeathbladeWindow);
 
         var es = GameManager.I.EnemyStats;
         es.SetBase(EnemyStat.HP, cfg.EnemyHP);
@@ -108,18 +108,19 @@ public partial class Main : Node2D
         es.SetBase(EnemyStat.EnemiesPerWaveBonus, 0f);
         es.SetBase(EnemyStat.BodyScale, 1f);
         es.SetBase(EnemyStat.FlagAccelOnBounce, 0f);
-        es.SetBase(EnemyStat.AccelBase, 0.20f);
-        es.SetBase(EnemyStat.AccelDecay, 0.50f);
-        es.SetBase(EnemyStat.AccelCap, 0.50f);
+        es.SetBase(EnemyStat.AccelBase, cfg.AccelBase);
+        es.SetBase(EnemyStat.AccelDecay, cfg.AccelDecay);
+        es.SetBase(EnemyStat.AccelCap, cfg.AccelCap);
         es.SetBase(EnemyStat.FlagElite, 0f);
-        es.SetBase(EnemyStat.EliteChance, 0.20f);
-        es.SetBase(EnemyStat.EliteHPMul, 5f);
-        es.SetBase(EnemyStat.EliteSpeedMul, 0.4f);
+        es.SetBase(EnemyStat.EliteChance, cfg.EliteChance);
+        es.SetBase(EnemyStat.EliteHPMul, cfg.EliteHPMul);
+        es.SetBase(EnemyStat.EliteSpeedMul, cfg.EliteSpeedMul);
+        es.SetBase(EnemyStat.EliteScaleMul, cfg.EliteScaleMul);   // P2-17：从 EnemyService.Init 挪入
         es.SetBase(EnemyStat.FlagSpawnFourSides, 0f);
         es.SetBase(EnemyStat.FlagSplit, 0f);
         es.SetBase(EnemyStat.FlagTracker, 0f);
-        es.SetBase(EnemyStat.TrackerCount, 2f);
-        es.SetBase(EnemyStat.TrackerSpeed, 40f);
-        es.SetBase(EnemyStat.TrackerHP, 1f);   // [待实测] 初值 1，若"喂养"撞击流则改 2
+        es.SetBase(EnemyStat.TrackerCount, cfg.TrackerCount);
+        es.SetBase(EnemyStat.TrackerSpeed, cfg.TrackerSpeed);
+        es.SetBase(EnemyStat.TrackerHP, cfg.TrackerHP);   // [待实测] 初值 1，若"喂养"撞击流则改 2
     }
 }

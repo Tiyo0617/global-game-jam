@@ -60,7 +60,6 @@ public partial class SpawnDirector : Node
         int count = _wave.EnemiesPerWave + (int)st.Get(EnemyStat.EnemiesPerWaveBonus);
         int hp = (int)st.Get(EnemyStat.HP);
         float scale = st.Get(EnemyStat.BodyScale);
-        if (scale <= 0f) scale = 1f;
 
         // 四向出生：词条开启时每只敌人随机挑一条边出生；关闭时维持原"右边缘出生"。
         bool fourSides = st.HasFlag(EnemyStat.FlagSpawnFourSides);
@@ -152,7 +151,6 @@ public partial class SpawnDirector : Node
         if (!enabled) return;
 
         float chance = st.Get(EnemyStat.EliteChance);
-        if (chance <= 0f) chance = 0.20f;   // 策划案 P=20%
 
         // ⚠️ 调试时跳过概率判定（每波必出），方便观察
         if (!DebugForceElite && !Rng.Chance(chance)) return;
@@ -171,12 +169,9 @@ public partial class SpawnDirector : Node
         int baseHP = (int)st.Get(EnemyStat.HP);
         int eliteHP = Mathf.Max(1, (int)(baseHP * st.Get(EnemyStat.EliteHPMul)));   // 防 0 血
         float speedMul = st.Get(EnemyStat.EliteSpeedMul);
-        if (speedMul <= 0f) speedMul = 0.4f;   // 策划案移速 ×0.4（极慢）
         float baseScale = st.Get(EnemyStat.BodyScale);
-        if (baseScale <= 0f) baseScale = 1f;
-        // P2-16：体积倍率改为数据驱动（EnemyStat.EliteScaleMul，基础值 2f 在 EnemyService.Init 设置）
+        // P2-16：体积倍率数据驱动（EnemyStat.EliteScaleMul，基础值在 Main.InitStats 设置）
         float scaleMul = st.Get(EnemyStat.EliteScaleMul);
-        if (scaleMul <= 0f) scaleMul = 2f;   // 兜底：未配置时保持原"大体积"设计意图
 
         // ⚠️ 调试日志：仅 DebugForceElite 开启时打印
         if (DebugForceElite) GD.Print($"[精英调试] 第 {_wavesSpawned} 波刷出精英：HP={eliteHP} 速度x{speedMul} 体积x{baseScale * scaleMul}");

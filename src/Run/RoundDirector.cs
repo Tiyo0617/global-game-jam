@@ -113,7 +113,6 @@ public partial class RoundDirector : Node
     private void StartDeathblade()
     {
         float dur = GameManager.I.PlayerStats.Get(PlayerStat.DeathbladeWindow);
-        if (dur <= 0f) dur = 8f;
 
         _phase = RoundPhase.Deathblade;
         _deathbladeTimer = dur;

@@ -17,6 +17,29 @@ public partial class RunConfig : Resource
     [Export] public int EnemyHP { get; set; } = 1;
     [Export] public float EnemyMoveSpeed { get; set; } = 120f;
 
+    // ---- 玩家侧机制默认值（P2-17：策划在 Inspector 里直接调）----
+    [Export] public float RicochetChance { get; set; } = 0.5f;        // 跳弹概率
+    [Export] public float DashRange { get; set; } = 120f;             // 闪现距离 px
+    [Export] public float DashCooldown { get; set; } = 3f;            // 闪现 CD 秒
+    [Export] public float DeathbladeWindow { get; set; } = 8f;        // 名刀窗口秒
+    [Export] public float ExtraShotInterval { get; set; } = 0.08f;    // 连发补射间隔秒
+    [Export] public float LaserSpinDegPerSec { get; set; } = 90f;     // 激光环绕角速度
+
+    // ---- 敌人侧机制默认值 ----
+    [Export] public float EliteChance { get; set; } = 0.20f;          // 精英出生概率
+    [Export] public float EliteHPMul { get; set; } = 5f;              // 精英血量倍率
+    [Export] public float EliteSpeedMul { get; set; } = 0.4f;         // 精英移速倍率
+    [Export] public float EliteScaleMul { get; set; } = 2f;           // 精英体积倍率
+    [Export] public int TrackerCount { get; set; } = 2;               // 追踪怪数量
+    [Export] public float TrackerSpeed { get; set; } = 40f;           // 追踪怪速度
+    [Export] public int TrackerHP { get; set; } = 1;                  // 追踪怪血量（待实测）
+    [Export] public float AccelBase { get; set; } = 0.20f;            // 加速反弹基础增量
+    [Export] public float AccelDecay { get; set; } = 0.50f;           // 加速反弹衰减系数
+    [Export] public float AccelCap { get; set; } = 0.50f;             // 加速反弹硬顶
+    [Export] public int SplitHP { get; set; } = 1;                    // 分裂小怪血量
+    [Export] public float SplitSpeedMul { get; set; } = 1.5f;         // 分裂小怪速度倍率
+    [Export] public float SplitScale { get; set; } = 0.5f;            // 分裂小怪体积
+
     [Export] public Godot.Collections.Array<WaveConfig> Waves { get; set; } = new();
 
     [Export] public PackedScene? PlayerScene { get; set; }
@@ -40,6 +63,25 @@ public partial class RunConfig : Resource
         BulletSpeed = 500f,
         EnemyHP = 1,
         EnemyMoveSpeed = 120f,
+        RicochetChance = 0.5f,
+        DashRange = 120f,
+        DashCooldown = 3f,
+        DeathbladeWindow = 8f,
+        ExtraShotInterval = 0.08f,
+        LaserSpinDegPerSec = 90f,
+        EliteChance = 0.20f,
+        EliteHPMul = 5f,
+        EliteSpeedMul = 0.4f,
+        EliteScaleMul = 2f,
+        TrackerCount = 2,
+        TrackerSpeed = 40f,
+        TrackerHP = 1,
+        AccelBase = 0.20f,
+        AccelDecay = 0.50f,
+        AccelCap = 0.50f,
+        SplitHP = 1,
+        SplitSpeedMul = 1.5f,
+        SplitScale = 0.5f,
         Waves = new Godot.Collections.Array<WaveConfig>
         {
             WaveConfig.Create(3, 3, 5.0f), WaveConfig.Create(3, 4, 5.0f),

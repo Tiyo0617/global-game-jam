@@ -52,7 +52,6 @@ public partial class Bullet : Area2D
         if (DebugForceRicochet) enabled = true;
 
         float chance = ps.Get(PlayerStat.RicochetChance);
-        if (chance <= 0f) chance = 0.5f;   // 策划案 P=50%
 
         _willBounce = enabled && Rng.Chance(chance);   // 全程唯一一次随机调用
         _bounced = false;

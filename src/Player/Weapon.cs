@@ -10,12 +10,8 @@ public partial class Weapon : Node
 {
     // ==================== 常量 ====================
 
-    /// <summary>连发补射间隔（秒）。策划案：T=0.08s。与主开火 CD 分开，保证"哒哒哒"手感。</summary>
-    private const float ExtraShotInterval = 0.08f;
-
-    /// <summary>激光环绕角速度（度/秒，顺时针）。策划案：90°/s。</summary>
-    /// <remarks>Godot 2D 的 Y 轴向下，角度递增即为顺时针。</remarks>
-    private const float LaserSpinDegPerSec = 90f;
+    // P2-17：ExtraShotInterval / LaserSpinDegPerSec 两个纯手感常量已搬进 run_config.tres，
+    // 运行时读 GameManager.I.Cfg.Xxx（不会被词条修改，不走 StatBlock）。
 
     /// <summary>激光穿透个数。取极大值等效"穿透路径上所有敌人"（策划案激光效果）。</summary>
     /// <remarks>复用 Bullet 现有的 Pierce-- 逻辑，无需改动 Bullet。</remarks>
@@ -84,7 +80,7 @@ public partial class Weapon : Node
         float d = (float)delta;
 
         // 0) 激光环绕角度持续推进（无论是否开火，保持转动节奏）
-        _laserAngle += LaserSpinDegPerSec * d;
+        _laserAngle += GameManager.I.Cfg.LaserSpinDegPerSec * d;
         if (_laserAngle >= 360f) _laserAngle -= 360f;   // 取模防无限增长
 
         // 0.5) 闪现（边沿触发，独立于开火 CD）
@@ -98,7 +94,7 @@ public partial class Weapon : Node
             {
                 FireOneBullet();                             // 补射一发
                 _pendingShots--;
-                _extraTimer += ExtraShotInterval;            // 累加而非赋值，防帧率波动累积漂移
+                _extraTimer += GameManager.I.Cfg.ExtraShotInterval;   // 累加而非赋值，防帧率波动累积漂移
                 // ⚠️ 调试日志：仅 DebugForceExtraShots 开启时打印
                 if (DebugForceExtraShots) GD.Print($"[连发调试] 补射 1 发，剩余 {_pendingShots} 发");
                 if (_pendingShots <= 0) _extraTimer = 0f;    // 补完清零
@@ -145,11 +141,9 @@ public partial class Weapon : Node
 
         // 瞬移：位置 = 当前 + 单位方向 × 距离，再夹进场内防出屏
         float range = st.Get(PlayerStat.DashRange);
-        if (range <= 0f) range = 120f;   // 策划案 D=120px
         _owner.GlobalPosition = ArenaBounds.ClampInside(_owner.GlobalPosition + move.Normalized() * range);
 
         _dashCd = st.Get(PlayerStat.DashCooldown);
-        if (_dashCd <= 0f) _dashCd = 3f;   // 策划案 T=3s
 
         // ⚠️ 调试日志：仅 DebugForceDash 开启时打印
         if (DebugForceDash) GD.Print($"[闪现调试] 瞬移到 {_owner.GlobalPosition}，冷却 {_dashCd}s");
@@ -174,7 +168,7 @@ public partial class Weapon : Node
         if (extra > 0)
         {
             _pendingShots = extra;
-            _extraTimer = ExtraShotInterval;   // 第一发补射的等待时间
+            _extraTimer = GameManager.I.Cfg.ExtraShotInterval;   // 第一发补射的等待时间
         }
     }
 

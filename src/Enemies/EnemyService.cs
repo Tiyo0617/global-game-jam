@@ -12,10 +12,8 @@ public partial class EnemyService : Node
     // ⚠️ 调试开关：true = 强制开启分裂。
     private const bool DebugForceSplit = false;
 
-    /// <summary>分裂小怪参数（策划案：1 血、速度 150%）。</summary>
-    private const int   SplitHP       = 1;
-    private const float SplitSpeedMul = 1.5f;
-    private const float SplitScale    = 0.5f;   // 体积减半（策划案未定，取视觉可辨识的值）
+    // P2-17：分裂小怪参数（SplitHP/SplitSpeedMul/SplitScale）已搬进 run_config.tres，
+    // 运行时读 GameManager.I.Cfg.Xxx（纯手感值，不会被词条修改，不走 StatBlock）。
 
     private Pool<EnemyBase>? _pool;
     private readonly List<EnemyBase> _active = new();
@@ -41,9 +39,7 @@ public partial class EnemyService : Node
         }
         _pool = new Pool<EnemyBase>(scene, this);
 
-        // P2-16：精英体积倍率的基础值在此设置（Main.InitStats 之后执行，不冲突）。
-        // 策划调整数值改这里的 2f 即可，SpawnDirector 改为从 StatBlock 读取。
-        GameManager.I.EnemyStats.SetBase(EnemyStat.EliteScaleMul, 2f);
+        // P2-17：EliteScaleMul 的 SetBase 已挪进 Main.InitStats（基础值只在 Main 设置一次）。
     }
 
     private void OnSpawn(SpawnEnemyRequest r)
@@ -95,9 +91,9 @@ public partial class EnemyService : Node
             {
                 Position  = pos,
                 Direction = Rng.Direction(),   // 两只各自随机方向，避免完全重叠
-                SpeedMul  = SplitSpeedMul,
-                HP        = SplitHP,
-                Scale     = SplitScale,
+                SpeedMul  = GameManager.I.Cfg.SplitSpeedMul,
+                HP        = GameManager.I.Cfg.SplitHP,
+                Scale     = GameManager.I.Cfg.SplitScale,
                 IsTracker = false,
                 CanSplit  = false,             // 小怪不再裂
             });
