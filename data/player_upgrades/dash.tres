@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="PlayerUpgradeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/Upgrades/PlayerUpgradeData.cs" id="1_scr"]
+
+[resource]
+script = ExtResource("1_scr")
+DisplayName = "闪现"
+Description = "闪现：鼠标右键向当前移动方向瞬移 120px，CD 3s（主题名待定）"
+Rarity = 1
+MaxStack = 1
+IsMechanic = true
+Stat = 15
+Op = 0
+Value = 1.0

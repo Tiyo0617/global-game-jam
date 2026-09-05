@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="PlayerUpgradeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/Upgrades/PlayerUpgradeData.cs" id="1_scr"]
+
+[resource]
+script = ExtResource("1_scr")
+DisplayName = "连发"
+Description = "连发：每次发射后隔 T 秒补射一次（每层 +1 发）"
+Rarity = 1
+MaxStack = 3
+IsMechanic = false
+Stat = 4
+Op = 0
+Value = 1.0

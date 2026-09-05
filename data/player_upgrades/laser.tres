@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="PlayerUpgradeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/Upgrades/PlayerUpgradeData.cs" id="1_scr"]
+
+[resource]
+script = ExtResource("1_scr")
+DisplayName = "激光"
+Description = "激光：炮弹改激光，穿透路径上所有敌人；发射方向时刻顺时针环绕玩家（主题名待定）"
+Rarity = 2
+MaxStack = 1
+IsMechanic = true
+Stat = 13
+Op = 0
+Value = 1.0

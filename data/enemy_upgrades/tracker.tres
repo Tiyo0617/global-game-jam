@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="EnemyUpgradeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/Upgrades/EnemyUpgradeData.cs" id="1_scr"]
+
+[resource]
+script = ExtResource("1_scr")
+DisplayName = "嗅探者"
+Description = "追踪怪：每波额外刷 2 只极慢、持续追踪玩家的敌人（血量 [待实测] 初值 1）"
+Rarity = 2
+MaxStack = 1
+IsMechanic = true
+Stat = 15
+Op = 0
+Value = 1.0

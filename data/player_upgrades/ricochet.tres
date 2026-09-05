@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="PlayerUpgradeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/Upgrades/PlayerUpgradeData.cs" id="1_scr"]
+
+[resource]
+script = ExtResource("1_scr")
+DisplayName = "跳弹"
+Description = "跳弹：子弹碰屏幕边缘按 50% 概率光学反射，每发至多 1 次（主题名待定）"
+Rarity = 1
+MaxStack = 1
+IsMechanic = true
+Stat = 14
+Op = 0
+Value = 1.0

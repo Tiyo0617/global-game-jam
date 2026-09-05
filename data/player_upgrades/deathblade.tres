@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="PlayerUpgradeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/Upgrades/PlayerUpgradeData.cs" id="1_scr"]
+
+[resource]
+script = ExtResource("1_scr")
+DisplayName = "宿根"
+Description = "名刀（背水一战）：生命归 0 进入 8s 窗口，窗口内清空全部敌人则回满血判胜。触发即消耗，永久移出池"
+Rarity = 2
+MaxStack = 1
+IsMechanic = true
+Stat = 16
+Op = 0
+Value = 1.0

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="EnemyUpgradeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/Upgrades/EnemyUpgradeData.cs" id="1_scr"]
+
+[resource]
+script = ExtResource("1_scr")
+DisplayName = "巨型个体"
+Description = "精英：每个轮次、每个波次都有概率额外刷 1 个大体积精英（血量 5、移速极慢）"
+Rarity = 2
+MaxStack = 1
+IsMechanic = true
+Stat = 8
+Op = 0
+Value = 1.0

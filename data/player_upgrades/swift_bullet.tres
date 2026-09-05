@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="PlayerUpgradeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/Upgrades/PlayerUpgradeData.cs" id="1_scr"]
+
+[resource]
+script = ExtResource("1_scr")
+DisplayName = "疾弹"
+Description = "疾弹：子弹移速 +30%"
+Rarity = 0
+MaxStack = 3
+IsMechanic = false
+Stat = 3
+Op = 1
+Value = 0.3

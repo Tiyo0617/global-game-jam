@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="PlayerUpgradeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/Upgrades/PlayerUpgradeData.cs" id="1_scr"]
+
+[resource]
+script = ExtResource("1_scr")
+DisplayName = "娇小"
+Description = "娇小：碰撞体积 -15%"
+Rarity = 0
+MaxStack = 3
+IsMechanic = false
+Stat = 7
+Op = 1
+Value = -0.15
