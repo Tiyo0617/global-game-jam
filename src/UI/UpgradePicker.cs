@@ -36,13 +36,14 @@ public partial class UpgradePicker : UiBase
         _dim.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         Root.AddChild(_dim);
 
-        var center = new CenterContainer();
-        center.SetAnchorsPreset(Control.LayoutPreset.FullRect);
-        Root.AddChild(center);
+        var wrapper = new Control();
+        wrapper.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        wrapper.MouseFilter = Control.MouseFilterEnum.Ignore;
+        Root.AddChild(wrapper);
 
         _content = new VBoxContainer();
         _content.AddThemeConstantOverride("separation", 24);
-        center.AddChild(_content);
+        wrapper.AddChild(_content);
 
         _titleLabel = new Label { HorizontalAlignment = HorizontalAlignment.Center };
         _titleLabel.AddThemeFontSizeOverride("font_size", 36);
@@ -111,11 +112,15 @@ public partial class UpgradePicker : UiBase
         _dim.Color = new Color(0f, 0f, 0f, 0f);
         _content.Modulate = new Color(1f, 1f, 1f, 0f);
 
-        // 等一帧让 CenterContainer 完成布局，拿到正确的中心位置
+        // 等两帧确保 _content 完成布局、Size 稳定（中文字体首次加载可能晚一帧）
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         if (!GodotObject.IsInstanceValid(this)) return;
 
-        var target = _content.Position;
+        // 手动计算居中位置（不依赖容器延迟布局，避免偶现读到旧位置导致面板卡在顶部）
+        var viewportSize = GetViewport().GetVisibleRect().Size;
+        var target = (viewportSize - _content.Size) / 2f;
+
         _content.Position = target + new Vector2(0f, -220f);
 
         var tw = CreateTween();

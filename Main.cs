@@ -59,7 +59,13 @@ public partial class Main : Node2D
         TryAddUi(ScenesPath.Result);
 
         rounds.Init(spawner, enemies);
-        rounds.StartRun();
+
+        // 继续存档（未通关）→ 恢复进度与 buff；否则从头开始
+        var resume = SaveService.I?.TakePendingResume();
+        if (resume != null && resume.Round > 1)
+            rounds.ResumeRun(resume, upgrades);
+        else
+            rounds.StartRun();
     }
 
     /// <summary>战斗背景：1280x720 铺满整屏、ZIndex 最低，永远垫底。图缺失只警告不报错。</summary>

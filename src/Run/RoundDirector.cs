@@ -45,6 +45,29 @@ public partial class RoundDirector : Node
         BeginRound();
     }
 
+    /// <summary>继续存档：恢复进度与"前 n-1 关"的 buff，然后从第 Round 关重打。</summary>
+    public void ResumeRun(SaveData data, UpgradeService upgrades)
+    {
+        GameManager.I.ResetRun();
+        GameManager.I.Round = Mathf.Max(1, data.Round);
+        GameManager.I.TotalDeaths = data.TotalDeaths;
+        GameManager.I.RunTime = data.RunTime;
+
+        // 恢复前 n-1 关累积的 buff（当前关的 buff 重新选，不恢复）
+        foreach (var name in data.PlayerBuffs)
+        {
+            var r = upgrades.FindByName(name, forPlayer: true);
+            if (r != null) upgrades.Apply(r);
+        }
+        foreach (var name in data.EnemyBuffs)
+        {
+            var r = upgrades.FindByName(name, forPlayer: false);
+            if (r != null) upgrades.Apply(r);
+        }
+
+        BeginRound();
+    }
+
     private void BeginRound()
     {
         // ⚠️ 必须在刷第一波之前清空在途子弹：上一轮末尾射出的子弹被三选一
@@ -55,6 +78,7 @@ public partial class RoundDirector : Node
 
         GameManager.I.Player?.ResetForRound();
         _enemies.ClearAll();
+        GameManager.I.SnapshotRoundStartBuffs();   // 快照这一关开始前的 buff，供存档
         _spawner.BeginRound(GameManager.I.Round);
         _phase = RoundPhase.Spawning;
         Bus.Pub(new RoundStarted(GameManager.I.Round));

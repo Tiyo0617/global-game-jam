@@ -191,6 +191,9 @@ public partial class SpriteAnimator : AnimatedSprite2D
         }
     }
 
+    /// <summary>公开重建入口：外部换 IdleTexture/WalkTexture 后调用。</summary>
+    public void Refresh() => Rebuild();
+
     public override void _PhysicsProcess(double delta)
     {
         UpdateFlip();

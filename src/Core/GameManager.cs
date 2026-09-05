@@ -35,6 +35,12 @@ public partial class GameManager : Node
     public List<PlayerUpgradeData> PlayerUpgrades { get; } = new();
     public List<EnemyUpgradeData> EnemyUpgrades { get; } = new();
 
+    /// <summary>当前这一关"开始前"的玩家 buff 快照（DisplayName，可重复=层数）。用于存档。</summary>
+    public List<string> RoundStartPlayerBuffs { get; } = new();
+
+    /// <summary>当前这一关"开始前"的敌人 buff 快照。</summary>
+    public List<string> RoundStartEnemyBuffs { get; } = new();
+
     public override void _Ready()
     {
         I = this;
@@ -43,7 +49,8 @@ public partial class GameManager : Node
 
     public override void _Process(double delta)
     {
-        RunTime += (float)delta;
+        // 三选一等暂停阶段不计入挑战用时
+        if (!GetTree().Paused) RunTime += (float)delta;
     }
 
     public string T(string key) => Strings.Get(key);
@@ -58,5 +65,18 @@ public partial class GameManager : Node
         DeathbladeConsumed = false;
         PlayerUpgrades.Clear();
         EnemyUpgrades.Clear();
+        RoundStartPlayerBuffs.Clear();
+        RoundStartEnemyBuffs.Clear();
+        PlayerStats.ClearModifiers();   // 清空数值加成，避免跨局残留
+        EnemyStats.ClearModifiers();
+    }
+
+    /// <summary>快照当前 buff 到 RoundStart（每关开始时调用，存档时保存"前 n-1 关的 buff"）。</summary>
+    public void SnapshotRoundStartBuffs()
+    {
+        RoundStartPlayerBuffs.Clear();
+        foreach (var u in PlayerUpgrades) if (u != null) RoundStartPlayerBuffs.Add(u.DisplayName);
+        RoundStartEnemyBuffs.Clear();
+        foreach (var u in EnemyUpgrades) if (u != null) RoundStartEnemyBuffs.Add(u.DisplayName);
     }
 }

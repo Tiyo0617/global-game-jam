@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 using Godot;
@@ -8,7 +9,7 @@ namespace GGJ;
 /// <summary>一份存档（存单）的数据。字段对齐策划定的存单内容。</summary>
 public class SaveData
 {
-    public int Version { get; set; } = 1;
+    public int Version { get; set; } = 2;
 
     /// <summary>当前第几关（1-based）。未通关=从这关重打；已通关时 Round 已在胜利时 +1。</summary>
     public int Round { get; set; } = 1;
@@ -30,6 +31,12 @@ public class SaveData
 
     /// <summary>存档时间戳（Unix 秒），用于展示与排序。</summary>
     public long Timestamp { get; set; }
+
+    /// <summary>前 n-1 关累积的玩家 buff（DisplayName 列表，可重复 = 层数）。</summary>
+    public List<string> PlayerBuffs { get; set; } = new();
+
+    /// <summary>前 n-1 关累积的敌人 buff（DisplayName 列表，可重复 = 层数）。</summary>
+    public List<string> EnemyBuffs { get; set; } = new();
 }
 
 /// <summary>
@@ -83,13 +90,14 @@ public partial class SaveService : Node
         Delete(slot);
     }
 
-    /// <summary>继续：读档并标记待恢复。返回该位是否有存档。</summary>
+    /// <summary>继续：读档并标记待恢复。返回该位是否有存档。通关存档视为从头开始（不恢复进度）。</summary>
     public bool Continue(int slot)
     {
         var data = Read(slot);
         if (data == null) return false;
         ActiveSlot = slot;
-        PendingResume = data;
+        // 通关存档：下次从头开始新局（成绩比较会保护旧成绩，失败不覆盖）
+        PendingResume = data.Finished ? null : data;
         _runStarted = false;
         return true;
     }
@@ -146,18 +154,46 @@ public partial class SaveService : Node
         var gm = GameManager.I;
         if (gm == null) return;
 
-        int round = Math.Max(1, gm.Round);
+        int round = Math.Max(1, gm.Round);          // 内部值：通关时 = TotalRounds + 1
+        int kills = ComputeKills(round, gm.Cfg);    // 前 round-1 关的击杀（通关 = 总击杀）
+
         var data = new SaveData
         {
-            Round = round,
+            // 通关存档 Round 展示为最后一关（TotalRounds），而不是内部推进后的 +1
+            Round = finished ? Math.Min(round, gm.Cfg.TotalRounds) : round,
             TotalDeaths = gm.TotalDeaths,
-            TotalKills = ComputeKills(round, gm.Cfg),
+            TotalKills = kills,
             RunTime = gm.RunTime,
             Rank = rank ?? Rating.RankOf(gm.TotalDeaths),
             Finished = finished,
             Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+            PlayerBuffs = new List<string>(gm.RoundStartPlayerBuffs),
+            EnemyBuffs = new List<string>(gm.RoundStartEnemyBuffs),
         };
+
+        var old = Read(ActiveSlot);
+
+        if (finished)
+        {
+            // 通关：旧档也是通关成绩时，只在本次更好才覆盖
+            if (old != null && old.Finished && !IsBetter(data, old)) return;
+        }
+        else
+        {
+            // 未完成：旧档是通关成绩时，不覆盖（保留旧成绩）
+            if (old != null && old.Finished) return;
+        }
+
         Write(ActiveSlot, data);
+    }
+
+    /// <summary>比较成绩：评级更高优先；评级相同比用时（短更好）。</summary>
+    private static bool IsBetter(SaveData a, SaveData b)
+    {
+        int pa = Rating.Priority(a.Rank);
+        int pb = Rating.Priority(b.Rank);
+        if (pa != pb) return pa > pb;
+        return a.RunTime < b.RunTime;
     }
 
     // ---------- 静态文件读写（菜单也能用，不依赖实例） ----------
