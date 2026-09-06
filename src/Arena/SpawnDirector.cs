@@ -17,6 +17,10 @@ public partial class SpawnDirector : Node
     // ⚠️ 调试开关：true = 强制开启追踪怪。
     private const bool DebugForceTracker = false;
 
+    // 普通怪基础体型倍率（>1 = 变大）。只作用于普通波次怪（SkinKind.Normal），
+    // 精英/追踪/马蜂窝/分裂小怪不受影响；敌人线"庞大"词条在此之上再乘。
+    private const float NormalEnemyVisualScale = 1.2f;
+
     private WaveConfig _wave = WaveConfig.Create(3, 3, 5f);
     private int _round = 1;
     private int _wavesSpawned;
@@ -87,7 +91,7 @@ public partial class SpawnDirector : Node
                 Direction = dir,
                 SpeedMul  = 1f,
                 HP        = hp,
-                Scale     = scale,
+                Scale     = scale * NormalEnemyVisualScale,
                 IsTracker = false,
                 CanSplit  = false,   // 普通怪不是分裂源：分裂职能收口到独立马蜂窝个体（见 TrySpawnSplitters）
                 SkinKind  = EnemySkinKind.Normal,   // 鸟/虫/甲虫随机换皮，不受分裂词条影响

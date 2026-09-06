@@ -265,7 +265,7 @@ public partial class AudioService : Node
         {
             _gameBgm = new AudioStreamPlayer
             {
-                VolumeDb = -10f,                              // 对局 BGM 音量（森林版较轻柔，略提升避免被音效盖住）
+                VolumeDb = +6f,                              // 对局 BGM 音量（-2 → +6：大胆放大；若源素材本身偏轻，此档约翻倍响度）
                 ProcessMode = ProcessModeEnum.Always,         // 三选一暂停时音乐继续
             };
             AddChild(_gameBgm);
