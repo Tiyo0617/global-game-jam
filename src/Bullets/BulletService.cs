@@ -42,21 +42,16 @@ public partial class BulletService : Node
     /// <summary>
     /// 清空所有在途子弹。由 RoundClearing 事件触发（新轮开始前）。
     /// 子弹都是本节点的子节点（Pool 用 this 作父节点）。
-    /// ⚠️ 只回收 Visible 的（= 在途活跃子弹），跳过已回池的——
-    ///    对已回池的再 Return 会把它们重复压入 _free 栈，后续 Rent 会出现重复引用。
+    /// 走 Bullet.Retire（幂等出口：置 _dead + 发事件 → OnDespawn → 回池），
+    /// 避免直接 Return 导致"同一发已回池后又被物理回调 Despawn"造成重复归还。
     /// </summary>
     private void ClearActive()
     {
         if (_pool == null) return;
-        int cleared = 0;
         foreach (var child in GetChildren())
         {
             if (child is Bullet b && GodotObject.IsInstanceValid(b) && b.Visible)
-            {
-                _pool.Return(b);
-                cleared++;
-            }
+                b.Retire();
         }
-        GD.Print($"[诊断] RoundClearing 触发，清空 {cleared} 发在途子弹（t={Time.GetTicksMsec()}ms）");
     }
 }

@@ -9,9 +9,6 @@ namespace GGJ;
 /// </summary>
 public partial class EnemyService : Node
 {
-    // ⚠️ 调试开关：true = 强制开启分裂。
-    private const bool DebugForceSplit = false;
-
     // P2-17：分裂小怪参数（SplitHP/SplitSpeedMul/SplitScale）已搬进 run_config.tres，
     // 运行时读 GameManager.I.Cfg.Xxx（纯手感值，不会被词条修改，不走 StatBlock）。
 
@@ -33,21 +30,17 @@ public partial class EnemyService : Node
 
     public override void _Ready()
     {
-        // ⚠️ 调试日志：仅 DebugForceSplit 开启时打印（用于确认游戏加载的是新代码）
-        if (DebugForceSplit) GD.Print("[分裂调试] ✔ 调试模式：分裂强制开启");
-
         Bus.Sub<SpawnEnemyRequest>(this, OnSpawn);
         Bus.Sub<EntityDied>(this, OnEntityDied);
     }
 
     /// <summary>
-    /// 分裂词条是否全局生效（FlagSplit 或调试开关）。
+    /// 分裂词条是否全局生效（FlagSplit）。
     /// SpawnDirector 用它决定"每波是否额外刷独立马蜂窝个体"，
     /// 死亡判定用它配合 CanSplit（只有马蜂窝为 true）触发裂巢。
     /// 共用这一处，保证"刷出来"和"会裂"永远同步。
     /// </summary>
-    public static bool SplitEnabled =>
-        DebugForceSplit || GameManager.I.EnemyStats.HasFlag(EnemyStat.FlagSplit);
+    public static bool SplitEnabled => GameManager.I.EnemyStats.HasFlag(EnemyStat.FlagSplit);
 
     public void Init(PackedScene? scene)
     {
@@ -82,16 +75,10 @@ public partial class EnemyService : Node
         if (!eb.Active) return;
 
         // ---- 分裂：只有马蜂窝（CanSplit=true）被打死才裂，在 despawn 前刷 2 只马蜂 ----
-        // 双重判断：CanSplit（实例级，只有马蜂窝为 true）+ SplitEnabled（词条/调试开关）
-        bool flag = SplitEnabled;
-
-        // ⚠️ 调试日志：仅 DebugForceSplit 开启时打印
-        if (DebugForceSplit) GD.Print($"[分裂调试] 敌人死亡：CanSplit={eb.CanSplit}，Flag={flag}");
-
+        // 双重判断：CanSplit（实例级，只有马蜂窝为 true）+ SplitEnabled（词条开启才裂）
         Vector2 deathPos = eb.GlobalPosition;   // 先记位置，despawn 后节点仍有效但稳妥起见提前取
-        if (eb.CanSplit && flag)
+        if (eb.CanSplit && SplitEnabled)
         {
-            if (DebugForceSplit) GD.Print("[分裂调试] >>> 触发分裂，生成 2 只小怪 <<<");
             EnqueueSplit(deathPos);   // ⚠️ 只记账：此链在物理回调里，实建交给 _Process（见 EnqueueSplit 注释）
         }
 

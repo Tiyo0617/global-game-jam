@@ -66,7 +66,6 @@ public partial class Player : CharacterBody2D
     public void ResetForRound()
     {
         int maxHp = (int)GameManager.I.PlayerStats.Get(PlayerStat.MaxHP);
-        GD.Print($"[HP调试] ResetForRound 前 max={_health.MaxHP} cur={_health.Current} pos=({GlobalPosition.X:F0},{GlobalPosition.Y:F0})（t={Time.GetTicksMsec()}ms）");
         _health.SetMaxHP(maxHp, healToFull: true);
         _health.ClearInvincible();
         // 重开短保护：轮次切换瞬间可能残留"上一轮贴着玩家的旧敌"的过期物理快照，
@@ -75,7 +74,6 @@ public partial class Player : CharacterBody2D
         GlobalPosition = ArenaBounds.Center;
         _vel = Vector2.Zero;
         Velocity = Vector2.Zero;
-        GD.Print($"[HP调试] ResetForRound 后 max={_health.MaxHP} cur={_health.Current} pos=({GlobalPosition.X:F0},{GlobalPosition.Y:F0})（t={Time.GetTicksMsec()}ms）");
         _lifestealCounter = 0;
         _growthCounter = 0;
 
@@ -167,7 +165,6 @@ public partial class Player : CharacterBody2D
             bool deathblade = GameManager.I.DeathbladeActive;
             if (_health.Invincible && !deathblade) return;   // 双方都不结算
 
-            var eh = enemyHealth;
             var epos = other is Node2D en ? en.GlobalPosition : GlobalPosition;
             // 服务器实际物理位置：区分"逻辑位置已就位但物理层还留在旧处/屏外"
             Vector2? serverPos = null;
@@ -180,22 +177,13 @@ public partial class Player : CharacterBody2D
                 }
                 catch { }
             }
-            string svPos = serverPos is Vector2 spv ? $"({spv.X:F0},{spv.Y:F0})" : "?";
 
             // ⚠️ 防御：Area2D 的 overlap 快照滞后于物理服务器实际状态。回收/复用会先把敌的
             //   GlobalPosition 移到出生点（远处），但物理服务器与玩家 hurtbox 的残留 overlap
             //   要等下一次物理 flush 才清除 —— 新轮首帧会把"刚复用的远敌"误判成接触。
             //   服务器里该敌 body 此刻根本不在玩家身边 → 是过期快照，跳过本次结算。
             if (serverPos is Vector2 sp && sp.DistanceTo(GlobalPosition) > 300f)
-            {
-                GD.Print($"[HP调试] 跳过残留接触：{other.Name} 服务器在({sp.X:F0},{sp.Y:F0}) 离玩家{(GlobalPosition - sp).Length():F0}px" +
-                    $" 逻辑在({epos.X:F0},{epos.Y:F0})（t={Time.GetTicksMsec()}ms）");
                 continue;
-            }
-
-            GD.Print($"[HP调试] 接触：玩家@({GlobalPosition.X:F0},{GlobalPosition.Y:F0}) ← 敌@({epos.X:F0},{epos.Y:F0}) " +
-                $"服务器位置={svPos} 敌血={eh.Current}/{eh.MaxHP} 玩家无敌={_health.Invincible} deathblade={deathblade} " +
-                $"(instance={other.GetInstanceId()} physProc={other.IsPhysicsProcessing()} t={Time.GetTicksMsec()}ms)");
 
             var toEnemy = new HitInfo
             {

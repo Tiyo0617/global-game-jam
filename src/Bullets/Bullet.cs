@@ -48,9 +48,6 @@ public partial class Bullet : Area2D
     /// </summary>
     private bool _dead;
 
-    // ⚠️ 调试开关：true = 强制开启跳弹。
-    private const bool DebugForceRicochet = false;
-
     // ---- 跳弹：发射时刻一次性判定（P2-11），飞行途中不再每帧摇骰子 ----
     /// <summary>本发是否会反弹（Launch 时摇一次骰子定格）。</summary>
     private bool _willBounce;
@@ -87,9 +84,6 @@ public partial class Bullet : Area2D
         // 飞行途中不再每帧调用 Rng.Chance（原实现每弹每帧摇一次，60fps 下 ~60 次/秒/弹）。
         var ps = GameManager.I.PlayerStats;
         bool enabled = ps.HasFlag(PlayerStat.FlagRicochet);
-
-        // ⚠️ 调试分支：词条系统没好之前强制开启，验证完随 DebugForceRicochet 一起移除
-        if (DebugForceRicochet) enabled = true;
 
         float chance = ps.Get(PlayerStat.RicochetChance);
 
@@ -148,7 +142,7 @@ public partial class Bullet : Area2D
             return;            // 反射成功，本帧不做出屏判定
         }
 
-        if (!ArenaBounds.Inside(GlobalPosition)) Despawn();
+        if (!ArenaBounds.Inside(GlobalPosition)) Retire();
     }
 
     /// <summary>
@@ -212,11 +206,15 @@ public partial class Bullet : Area2D
         Bus.Pub(new SfxRequest { Key = "hit" });   // 子弹命中音效：命中目标瞬间播放（AudioService 有 40ms 节流防爆音）
         DamageSystem.Deal(ref hit);
 
-        if (Pierce <= 0) Despawn();
+        if (Pierce <= 0) Retire();
         else Pierce--;
     }
 
-    private void Despawn()
+    /// <summary>
+    /// 幂等销毁出口：命中 / 出屏 / 轮次清场共用。已销毁（_dead）后再次调用直接忽略，
+    /// 配合 Pool.Return 的防重，杜绝重复归还。
+    /// </summary>
+    internal void Retire()
     {
         if (_dead) return;   // 幂等：同一发只允许销毁一次
         _dead = true;

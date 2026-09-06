@@ -21,43 +21,6 @@ public partial class UpgradeService : Node
     public override void _Ready()
     {
         LoadPools();
-        Bus.Sub<UpgradeOffered>(this, OnOffered);
-        Bus.Sub<UpgradeChosen>(this, OnChosen);
-
-        // ===== ⚠️ 临时诊断日志：定位"未拿分裂卡就分裂/首波空刷"用，定位后整段删除 =====
-        Bus.Sub<RoundStarted>(this, e =>
-        {
-            // 聚合诊断：把"清场后场上还剩什么"塞进轮开始这一行，一次就能看出残留。
-            var es = GetParent()?.GetNodeOrNull<EnemyService>("EnemyService");
-            var bs = GetParent()?.GetNodeOrNull<BulletService>("BulletService");
-            int inFlight = 0;
-            if (bs != null)
-                foreach (var c in bs.GetChildren())
-                    if (c is Bullet b && GodotObject.IsInstanceValid(b) && b.Visible) inFlight++;
-
-            var p = GameManager.I.Player;
-            string hp = "?,pos=?";
-            if (p != null && GodotObject.IsInstanceValid(p))
-            {
-                var h = p.GetNodeOrNull<Health>("Health");
-                if (h != null) hp = $"{h.Current}/{h.MaxHP},pos=({p.GlobalPosition.X:F0},{p.GlobalPosition.Y:F0})";
-            }
-            GD.Print($"[诊断] ===== 第 {e.Round} 轮开始（t={Time.GetTicksMsec()}ms）FlagSplit=" +
-                $"{GameManager.I.EnemyStats.HasFlag(EnemyStat.FlagSplit)} 玩家hp={hp} 场上敌={es?.AliveCount} 在途子弹={inFlight} =====");
-        });
-        Bus.Sub<WaveStarted>(this, e => GD.Print(
-            $"[诊断] 第 {e.WaveIndex} 波刷出，本波 {e.Count} 只（t={Time.GetTicksMsec()}ms）"));
-        Bus.Sub<EnemySpawned>(this, e =>
-        {
-            var pos = e.Enemy is Node2D n ? n.GlobalPosition : Vector2.Zero;
-            GD.Print($"[诊断] 敌人出生 @({pos.X:F0},{pos.Y:F0})（t={Time.GetTicksMsec()}ms）");
-        });
-        Bus.Sub<EntityDied>(this, e =>
-        {
-            if (e.TargetIsPlayer) return;   // 玩家死亡不记，只记敌人
-            GD.Print($"[诊断] 敌人死亡 @({e.Position.X:F0},{e.Position.Y:F0})（t={Time.GetTicksMsec()}ms）");
-        });
-        // ===== 临时诊断结束 =====
     }
 
     // ==================== 词条池加载 ====================
@@ -70,7 +33,6 @@ public partial class UpgradeService : Node
     {
         LoadDir("res://data/player_upgrades", _playerPool);
         LoadDir("res://data/enemy_upgrades", _enemyPool);
-        GD.Print($"[UpgradeService] 词条池加载完成：玩家 {_playerPool.Count} 张，敌人 {_enemyPool.Count} 张");
     }
 
     private void LoadDir<T>(string dir, List<T> pool) where T : Resource
@@ -94,18 +56,6 @@ public partial class UpgradeService : Node
             }
             pool.Add(res);
         }
-    }
-
-    // ==================== 事件响应 ====================
-
-    private void OnOffered(UpgradeOffered e)
-    {
-        GD.Print($"[UpgradeService] 需要展示三选一：{(e.ForPlayer ? "玩家线" : "敌人线")}");
-    }
-
-    private void OnChosen(UpgradeChosen e)
-    {
-        GD.Print($"[UpgradeService] 已选择：{(e.ForPlayer ? "玩家线" : "敌人线")}");
     }
 
     // ==================== 抽取 ====================
@@ -233,12 +183,6 @@ public partial class UpgradeService : Node
     /// <summary>把选中的词条应用到对应 StatBlock（数值立即生效）。</summary>
     public void Apply(Resource upgrade)
     {
-        // ⚠️ 临时诊断：记录每张卡的生效时刻与目标线（定位分裂 bug 用，定位后删除）
-        if (upgrade is PlayerUpgradeData pd)
-            GD.Print($"[诊断] 玩家线生效：{pd.DisplayName}（t={Time.GetTicksMsec()}ms）");
-        else if (upgrade is EnemyUpgradeData ed)
-            GD.Print($"[诊断] 敌人线生效：{ed.DisplayName}（t={Time.GetTicksMsec()}ms）");
-
         if (upgrade is PlayerUpgradeData p)
         {
             GameManager.I.PlayerStats.AddModifier(new StatModifier(p.Stat, p.Op, p.Value));

@@ -37,15 +37,6 @@ public partial class Weapon : Node
     /// <summary>发射口贴图的显示宽度（px）。贴图多大都会自动缩到这个尺寸。</summary>
     private const float MuzzleFxSize = 60f;
 
-    // ⚠️ 调试开关：true = 强制开启对应词条（词条系统未完成时的临时验证手段）。
-    //    正常游玩保持 false —— 词条由三选一系统启用。
-    private const bool DebugForceExtraShots = false;
-    /// <summary>调试模式下强制补射的次数。</summary>
-    private const int DebugExtraShots = 2;
-
-    // ⚠️ 调试开关：true = 强制开启激光。
-    private const bool DebugForceLaser = false;
-
     // ==================== 字段 ====================
 
     /// <summary>主开火冷却计时（秒）。> 0 时不能开火。</summary>
@@ -73,9 +64,6 @@ public partial class Weapon : Node
     private bool _dashQueued;
     /// <summary>闪现冷却计时（秒）。> 0 时不能闪现。</summary>
     private float _dashCd;
-
-    // ⚠️ 调试开关：true = 强制开启闪现。
-    private const bool DebugForceDash = false;
 
     // ==================== 生命周期 ====================
 
@@ -158,8 +146,6 @@ public partial class Weapon : Node
                 FireOneBullet();                             // 补射一发
                 _pendingShots--;
                 _extraTimer += GameManager.I.Cfg.ExtraShotInterval;   // 累加而非赋值，防帧率波动累积漂移
-                // ⚠️ 调试日志：仅 DebugForceExtraShots 开启时打印
-                if (DebugForceExtraShots) GD.Print($"[连发调试] 补射 1 发，剩余 {_pendingShots} 发");
                 if (_pendingShots <= 0) _extraTimer = 0f;    // 补完清零
             }
         }
@@ -190,12 +176,7 @@ public partial class Weapon : Node
         _dashQueued = false;
 
         var st = GameManager.I.PlayerStats;
-        bool enabled = st.HasFlag(PlayerStat.FlagDash);
-
-        // ⚠️ 调试分支：词条系统没好之前强制开启，验证完随 DebugForceDash 一起移除
-        if (DebugForceDash) enabled = true;
-
-        if (!enabled) return;
+        if (!st.HasFlag(PlayerStat.FlagDash)) return;
         if (_dashCd > 0f) return;   // 还在冷却
 
         // 方向 = 当前移动方向（WASD）。静止时不闪现（不浪费冷却）
@@ -207,26 +188,17 @@ public partial class Weapon : Node
         _owner.GlobalPosition = ArenaBounds.ClampInside(_owner.GlobalPosition + move.Normalized() * range);
 
         _dashCd = st.Get(PlayerStat.DashCooldown);
-
-        // ⚠️ 调试日志：仅 DebugForceDash 开启时打印
-        if (DebugForceDash) GD.Print($"[闪现调试] 瞬移到 {_owner.GlobalPosition}，冷却 {_dashCd}s");
     }
 
     /// <summary>
     /// 每帧把发射口特效贴到"当前环绕角度 + MuzzleOrbit 轨道"上。
-    /// 激光词条激活（或 DebugForceLaser 调试开启）才显示，否则隐藏。
+    /// 激光词条激活才显示，否则隐藏。
     /// </summary>
     private void UpdateMuzzleFx()
     {
         if (_muzzleFx == null) return;
 
-        var st = GameManager.I.PlayerStats;
-        bool laser = st.HasFlag(PlayerStat.FlagLaser);
-
-        // ⚠️ 调试分支：强制开启时发射口一并显示，验证完随 DebugForceLaser 一起移除
-        if (DebugForceLaser) laser = true;
-
-        if (!laser)
+        if (!GameManager.I.PlayerStats.HasFlag(PlayerStat.FlagLaser))
         {
             _muzzleFx.Visible = false;
             return;
@@ -246,12 +218,6 @@ public partial class Weapon : Node
         // 读连发词条层数（词条未生效时为 0 = 不补射）
         int extra = (int)GameManager.I.PlayerStats.Get(PlayerStat.ExtraShots);
 
-        // ⚠️ 调试分支：词条系统没好之前强制开启，验证完随 DebugForceExtraShots 一起移除
-        if (DebugForceExtraShots && extra <= 0) extra = DebugExtraShots;
-
-        // ⚠️ 调试日志：仅 DebugForceExtraShots 开启时打印
-        if (DebugForceExtraShots) GD.Print($"[连发调试] 主射 1 发，排队补射 {extra} 发");
-
         if (extra > 0)
         {
             _pendingShots = extra;
@@ -267,9 +233,6 @@ public partial class Weapon : Node
     {
         var st = GameManager.I.PlayerStats;
         bool laser = st.HasFlag(PlayerStat.FlagLaser);
-
-        // ⚠️ 调试分支：词条系统没好之前强制开启，验证完随 DebugForceLaser 一起移除
-        if (DebugForceLaser) laser = true;
 
         Vector2 dir = laser
             ? AngleToDirection(_laserAngle)    // 激光：当前环绕角度（顺时针转动中）

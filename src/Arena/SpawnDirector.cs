@@ -8,15 +8,6 @@ namespace GGJ;
 /// </summary>
 public partial class SpawnDirector : Node
 {
-    // ⚠️ 调试开关：true = 强制开启四向出生。
-    private const bool DebugForceFourSides = false;
-
-    // ⚠️ 调试开关：true = 强制开启精英怪，且跳过概率判定每波必出。
-    private const bool DebugForceElite = false;
-
-    // ⚠️ 调试开关：true = 强制开启追踪怪。
-    private const bool DebugForceTracker = false;
-
     // 普通怪基础体型倍率（>1 = 变大）。只作用于普通波次怪（SkinKind.Normal），
     // 精英/追踪/马蜂窝/分裂小怪不受影响；敌人线"庞大"词条在此之上再乘。
     private const float NormalEnemyVisualScale = 1.2f;
@@ -67,9 +58,6 @@ public partial class SpawnDirector : Node
 
         // 四向出生：词条开启时每只敌人随机挑一条边出生；关闭时维持原"右边缘出生"。
         bool fourSides = st.HasFlag(EnemyStat.FlagSpawnFourSides);
-
-        // ⚠️ 调试分支：词条系统没好之前强制开启，验证完随 DebugForceFourSides 一起移除
-        if (DebugForceFourSides) fourSides = true;
 
         for (int i = 0; i < count; i++)
         {
@@ -152,21 +140,13 @@ public partial class SpawnDirector : Node
     /// </summary>
     private void TrySpawnElite(StatBlock st)
     {
-        bool enabled = st.HasFlag(EnemyStat.FlagElite);
-
-        // ⚠️ 调试分支：词条系统没好之前强制开启，验证完随 DebugForceElite 一起移除
-        if (DebugForceElite) enabled = true;
-
-        if (!enabled) return;
+        if (!st.HasFlag(EnemyStat.FlagElite)) return;
 
         float chance = st.Get(EnemyStat.EliteChance);
-
-        // ⚠️ 调试时跳过概率判定（每波必出），方便观察
-        if (!DebugForceElite && !Rng.Chance(chance)) return;
+        if (!Rng.Chance(chance)) return;
 
         // 出生边 + 方向：复用四向逻辑保持一致
         bool fourSides = st.HasFlag(EnemyStat.FlagSpawnFourSides);
-        if (DebugForceFourSides) fourSides = true;
         var edge = fourSides
             ? (ArenaBounds.Edge)Rng.RangeInt(0, 4)
             : ArenaBounds.Edge.Right;
@@ -181,9 +161,6 @@ public partial class SpawnDirector : Node
         float baseScale = st.Get(EnemyStat.BodyScale);
         // P2-16：体积倍率数据驱动（EnemyStat.EliteScaleMul，基础值在 Main.InitStats 设置）
         float scaleMul = st.Get(EnemyStat.EliteScaleMul);
-
-        // ⚠️ 调试日志：仅 DebugForceElite 开启时打印
-        if (DebugForceElite) GD.Print($"[精英调试] 第 {_wavesSpawned} 波刷出精英：HP={eliteHP} 速度x{speedMul} 体积x{baseScale * scaleMul}");
 
         Bus.Pub(new SpawnEnemyRequest
         {
@@ -206,7 +183,7 @@ public partial class SpawnDirector : Node
     /// </summary>
     private void TrySpawnSplitters(StatBlock st)
     {
-        bool enabled = EnemyService.SplitEnabled;   // 词条 FlagSplit 或调试开关，任一开启即生效
+        bool enabled = EnemyService.SplitEnabled;   // 分裂词条（FlagSplit）开启才生效
         if (!enabled) return;
 
         var cfg = GameManager.I.Cfg;
@@ -219,7 +196,6 @@ public partial class SpawnDirector : Node
         float baseScale = st.Get(EnemyStat.BodyScale);
 
         bool fourSides = st.HasFlag(EnemyStat.FlagSpawnFourSides);
-        if (DebugForceFourSides) fourSides = true;
 
         for (int i = 0; i < n; i++)
         {
@@ -251,22 +227,13 @@ public partial class SpawnDirector : Node
     /// </summary>
     private void TrySpawnTrackers(StatBlock st)
     {
-        bool enabled = st.HasFlag(EnemyStat.FlagTracker);
-
-        // ⚠️ 调试分支：词条系统没好之前强制开启，验证完随 DebugForceTracker 一起移除
-        if (DebugForceTracker) enabled = true;
-
-        if (!enabled) return;
+        if (!st.HasFlag(EnemyStat.FlagTracker)) return;
 
         int count = (int)st.Get(EnemyStat.TrackerCount);
         if (count <= 0) return;
 
         int trackerHP = Mathf.Max(1, (int)st.Get(EnemyStat.TrackerHP));   // 策划案初值 1
         bool fourSides = st.HasFlag(EnemyStat.FlagSpawnFourSides);
-        if (DebugForceFourSides) fourSides = true;
-
-        // ⚠️ 调试日志：仅 DebugForceTracker 开启时打印
-        if (DebugForceTracker) GD.Print($"[追踪调试] 第 {_wavesSpawned} 波刷出 {count} 只追踪怪：HP={trackerHP}");
 
         for (int i = 0; i < count; i++)
         {

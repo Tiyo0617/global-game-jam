@@ -60,11 +60,7 @@ public partial class Health : Node
         // 只有宿主是玩家才启动受击无敌帧。Health 挂在实体（Player / EnemyBase）下面，
         // GetParent() 即宿主；Player._Ready 里已 AddToGroup("player")。
         if (GetParent() is Node ownerNode && ownerNode.IsInGroup("player"))
-        {
             StartInvincible(GameManager.I.Feel?.InvincibleTime ?? 1.5f);
-            string pos = ownerNode is Node2D n2 ? $"{n2.GlobalPosition.X:F0},{n2.GlobalPosition.Y:F0}" : "?";
-            GD.Print($"[HP调试] 玩家受击 {Current + Mathf.Max(1, (int)amount)}→{Current} @({pos})（t={Time.GetTicksMsec()}ms）");
-        }
 
         if (Current <= 0)
         {
