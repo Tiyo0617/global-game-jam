@@ -35,6 +35,9 @@ public partial class SpriteAnimator : AnimatedSprite2D
     [Export] public float AnimSpeed = 8f;
     [Export] public bool FlipWithDirection = false;   // 朝向跟随水平移动方向
     [Export] public bool ArtFacesLeft = true;          // 美术默认朝左
+    /// <summary>贴图内容自动居中：扫描非透明 bbox，把视觉中心对齐节点原点。
+    /// 解决素材上下留白不均导致的发射点/视觉错位（如幼苗贴图内容偏下）。默认 false，玩家场景开启。</summary>
+    [Export] public bool AutoCenterContent { get; set; }
 
     // 普通怪随机换皮：RandomIdleTextures[i] 与 RandomWalkTextures[i] 是同一套
     [Export] public Texture2D?[]? RandomIdleTextures;
@@ -189,6 +192,49 @@ public partial class SpriteAnimator : AnimatedSprite2D
             Play("idle");
             _current = "idle";
         }
+
+        ApplyContentCenter();
+    }
+
+    /// <summary>
+    /// 贴图内容自动居中：扫描 IdleTexture 第一帧的非透明 bbox，把"内容中心"贴齐节点原点。
+    /// 仅当 AutoCenterContent = true 时生效（玩家场景开启，敌人保持原行为）。
+    /// </summary>
+    private void ApplyContentCenter()
+    {
+        if (!AutoCenterContent) return;
+        var tex = IdleTexture;
+        if (tex == null) { Offset = Vector2.Zero; return; }
+
+        var img = tex.GetImage();
+        if (img == null) return;
+
+        int w = img.GetWidth();
+        int h = img.GetHeight();
+        int frameW = w / Mathf.Max(1, IdleFrames);
+        int frameH = h;   // 横向精灵表：帧高 = 贴图高
+        if (frameW <= 0 || frameH <= 0) return;
+
+        int minX = frameW, minY = frameH, maxX = -1, maxY = -1;
+        for (int y = 0; y < frameH; y++)
+        {
+            for (int x = 0; x < frameW; x++)
+            {
+                if (img.GetPixel(x, y).A <= 0.01f) continue;
+                if (x < minX) minX = x;
+                if (y < minY) minY = y;
+                if (x > maxX) maxX = x;
+                if (y > maxY) maxY = y;
+            }
+        }
+        if (maxX < 0) { Offset = Vector2.Zero; return; }
+
+        float cx = (minX + maxX) * 0.5f;
+        float cy = (minY + maxY) * 0.5f;
+        float ox = cx - frameW * 0.5f;   // 内容中心相对帧中心的偏移
+        float oy = cy - frameH * 0.5f;
+        // Centered=true + Offset = -offset → 内容中心落在节点原点（= Player 原点 = 发射点基准）
+        Offset = new Vector2(-ox, -oy);
     }
 
     /// <summary>公开重建入口：外部换 IdleTexture/WalkTexture 后调用。</summary>

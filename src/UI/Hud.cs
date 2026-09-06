@@ -24,6 +24,7 @@ public partial class Hud : UiBase
     private Control _enemyBuffsOverlay = null!;
     private VBoxContainer _enemyBuffsList = null!;
     private Control _settingsOverlay = null!;
+    private readonly List<Button> _settingsButtons = new();
 
     private int _currentWave = 1;
 
@@ -49,6 +50,34 @@ public partial class Hud : UiBase
 
     /// <summary>每帧轮询调试热键（F1 跳关）。</summary>
     public override void _Process(double delta) => DebugTools.Poll(GetTree());
+
+    /// <summary>
+    /// 局内键盘快捷键：
+    /// - ESC：游戏进行中 → 打开设置；设置窗口打开时 → 退出游戏（返回主菜单）。
+    /// - 空格：设置窗口打开时 → 继续游戏。
+    /// 上下选择 / 回车确认由 Nav（MenuNav）处理。
+    /// </summary>
+    public override void _Input(InputEvent e)
+    {
+        if (e is not InputEventKey key || !key.Pressed || key.Echo) return;
+
+        if (key.Keycode == Key.Escape)
+        {
+            // 从最顶层窗口开始逐层关闭：详情页 → 设置 → 打开设置
+            if (_myBuffsOverlay.Visible) CloseBuffs(true);
+            else if (_enemyBuffsOverlay.Visible) CloseBuffs(false);
+            else if (_settingsOverlay.Visible) OnBackToMenu();
+            else OnSettingsPressed();
+            GetViewport().SetInputAsHandled();
+        }
+        else if (key.Keycode == Key.Space)
+        {
+            // 空格只在设置窗口（无详情页遮挡）时生效
+            if (_settingsOverlay.Visible && !_myBuffsOverlay.Visible && !_enemyBuffsOverlay.Visible)
+                OnContinueGame();
+            GetViewport().SetInputAsHandled();
+        }
+    }
 
     // ---------- 布局 ----------
 
@@ -112,25 +141,28 @@ public partial class Hud : UiBase
         _myBuffsList = new VBoxContainer();
         _myBuffsList.AddThemeConstantOverride("separation", 6);
         myContent.AddChild(_myBuffsList);
-        myContent.AddChild(MakeButton(T("menu_back"), () => HideOverlay(_myBuffsOverlay), hoverFx: false, minSize: new Vector2(120, 36), fontSize: 18));
+        myContent.AddChild(MakeButton(T("menu_back"), () => CloseBuffs(true), hoverFx: true, minSize: new Vector2(120, 36), fontSize: 18));
 
         _enemyBuffsOverlay = BuildOverlay(T("hud_enemy_buffs"), out var enemyContent);
         _enemyBuffsList = new VBoxContainer();
         _enemyBuffsList.AddThemeConstantOverride("separation", 6);
         enemyContent.AddChild(_enemyBuffsList);
-        enemyContent.AddChild(MakeButton(T("menu_back"), () => HideOverlay(_enemyBuffsOverlay), hoverFx: false, minSize: new Vector2(120, 36), fontSize: 18));
+        enemyContent.AddChild(MakeButton(T("menu_back"), () => CloseBuffs(false), hoverFx: true, minSize: new Vector2(120, 36), fontSize: 18));
     }
 
     private Control BuildSettingsOverlay()
     {
-        var rows = new Control[]
-        {
-            MakeButton(T("hud_my_buffs"), OnMyBuffsPressed, hoverFx: false, minSize: new Vector2(240, 44), fontSize: 20),
-            MakeButton(T("hud_enemy_buffs"), OnEnemyBuffsPressed, hoverFx: false, minSize: new Vector2(240, 44), fontSize: 20),
-            MakeButton(T("hud_continue"), OnContinueGame, hoverFx: false, minSize: new Vector2(240, 48), fontSize: 22),
-            MakeButton(T("hud_back_menu"), OnBackToMenu, hoverFx: false, minSize: new Vector2(240, 48), fontSize: 22),
-        };
-        return BuildOverlay(T("hud_settings"), rows);
+        var myBuffs = MakeButton(T("hud_my_buffs"), OnMyBuffsPressed, hoverFx: true, minSize: new Vector2(240, 44), fontSize: 20);
+        var enemyBuffs = MakeButton(T("hud_enemy_buffs"), OnEnemyBuffsPressed, hoverFx: true, minSize: new Vector2(240, 44), fontSize: 20);
+        var continueBtn = MakeButton(T("hud_continue"), OnContinueGame, hoverFx: true, minSize: new Vector2(240, 48), fontSize: 22);
+        var backMenu = MakeButton(T("hud_back_menu"), OnBackToMenu, hoverFx: true, minSize: new Vector2(240, 48), fontSize: 22);
+
+        _settingsButtons.Add(myBuffs);
+        _settingsButtons.Add(enemyBuffs);
+        _settingsButtons.Add(continueBtn);
+        _settingsButtons.Add(backMenu);
+
+        return BuildOverlay(T("hud_settings"), new Control[] { myBuffs, enemyBuffs, continueBtn, backMenu });
     }
 
     // ---------- 刷新 ----------
@@ -174,12 +206,15 @@ public partial class Hud : UiBase
     {
         GetTree().Paused = true;
         ShowOverlay(_settingsOverlay);
+        SetSettingsButtonsDisabled(false);
+        Nav.Clear();   // 清空预选，不自动预选任何按钮
     }
 
     private void OnContinueGame()
     {
         HideOverlay(_settingsOverlay);
         GetTree().Paused = false;
+        Nav.Clear();
     }
 
     private void OnBackToMenu()
@@ -211,6 +246,21 @@ public partial class Hud : UiBase
         }
 
         ShowOverlay(overlay);
+        SetSettingsButtonsDisabled(true);   // 详情页在最顶层：禁用被盖住的设置按钮，键盘只响应详情页
+        Nav.Clear();                        // 清空预选，不自动预选
+    }
+
+    private void CloseBuffs(bool forPlayer)
+    {
+        var overlay = forPlayer ? _myBuffsOverlay : _enemyBuffsOverlay;
+        HideOverlay(overlay);
+        SetSettingsButtonsDisabled(false);  // 回到设置窗口，恢复设置按钮
+        Nav.Clear();
+    }
+
+    private void SetSettingsButtonsDisabled(bool disabled)
+    {
+        foreach (var b in _settingsButtons) b.Disabled = disabled;
     }
 
     private List<Control> BuildBuffEntries(bool forPlayer)

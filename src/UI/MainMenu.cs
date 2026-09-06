@@ -15,8 +15,12 @@ public partial class MainMenu : UiBase
 
     private Control _creditsOverlay = null!;
     private Control _slotsOverlay = null!;
+    private Control _confirmDeleteOverlay = null!;
+    private Button _slotsBackBtn = null!;
+    private int _pendingDeleteSlot = -1;
     private VBoxContainer _slotsList = null!;
     private readonly List<Control> _fadeItems = new();
+    private readonly List<Button> _mainButtons = new();
     private bool _leaving;
     private AudioStreamPlayer? _bgm;
 
@@ -69,7 +73,7 @@ public partial class MainMenu : UiBase
         layout.AddThemeConstantOverride("separation", 20);
         center.AddChild(layout);
 
-        // 标题
+        // 标题（中文主标题 + 英文副标题）
         var title = new Label
         {
             Text = T("menu_title"),
@@ -79,6 +83,16 @@ public partial class MainMenu : UiBase
         layout.AddChild(title);
         _fadeItems.Add(title);
 
+        var subtitle = new Label
+        {
+            Text = T("menu_subtitle"),
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Modulate = new Color(0.72f, 0.76f, 0.82f, 1f),
+        };
+        subtitle.AddThemeFontSizeOverride("font_size", 26);
+        layout.AddChild(subtitle);
+        _fadeItems.Add(subtitle);
+
         // 标题与按钮之间留白
         layout.AddChild(new Control { CustomMinimumSize = new Vector2(0, 40) });
 
@@ -86,6 +100,11 @@ public partial class MainMenu : UiBase
         var newGameBtn = MakeButton(T("menu_new_game"), OnNewGamePressed);
         var creditsBtn = MakeButton(T("menu_credits"), OnCreditsPressed);
         var quitBtn = MakeButton(T("menu_quit"), OnQuitPressed);
+
+        _mainButtons.Add(continueBtn);
+        _mainButtons.Add(newGameBtn);
+        _mainButtons.Add(creditsBtn);
+        _mainButtons.Add(quitBtn);
 
         layout.AddChild(continueBtn);
         layout.AddChild(newGameBtn);
@@ -99,6 +118,7 @@ public partial class MainMenu : UiBase
 
         _creditsOverlay = BuildCreditsOverlay();
         _slotsOverlay = BuildSlotsOverlay();
+        _confirmDeleteOverlay = BuildConfirmDeleteOverlay();   // 最后建，显示在最顶层
     }
 
     /// <summary>背景：优先静态图 res://art/background.png；没有就纯色。动图可换成 AnimatedTexture / AnimatedSprite2D。</summary>
@@ -134,6 +154,8 @@ public partial class MainMenu : UiBase
     {
         RefreshSlots();
         ShowOverlay(_slotsOverlay);
+        SetMainButtonsDisabled(true);
+        Nav.Clear();   // 清空预选，不自动预选
     }
 
     private void OnNewGamePressed()
@@ -145,7 +167,12 @@ public partial class MainMenu : UiBase
         StartGame();
     }
 
-    private void OnCreditsPressed() => ShowOverlay(_creditsOverlay);
+    private void OnCreditsPressed()
+    {
+        ShowOverlay(_creditsOverlay);
+        SetMainButtonsDisabled(true);
+        Nav.Clear();   // 清空预选，不自动预选
+    }
 
     private void OnQuitPressed() => GetTree().Quit();
 
@@ -159,8 +186,36 @@ public partial class MainMenu : UiBase
         StartGame();
     }
 
-    private void CloseCredits() => HideOverlay(_creditsOverlay);
-    private void CloseSlots() => HideOverlay(_slotsOverlay);
+    private void CloseCredits()
+    {
+        HideOverlay(_creditsOverlay);
+        SetMainButtonsDisabled(false);
+        Nav.Clear();
+    }
+
+    private void CloseSlots()
+    {
+        HideOverlay(_slotsOverlay);
+        SetMainButtonsDisabled(false);
+        Nav.Clear();
+    }
+
+    private void SetMainButtonsDisabled(bool disabled)
+    {
+        foreach (var b in _mainButtons) b.Disabled = disabled;
+    }
+
+    /// <summary>ESC：关闭最顶层弹窗（开发者团队 / 存档位）。</summary>
+    public override void _Input(InputEvent e)
+    {
+        if (e is not InputEventKey key || !key.Pressed || key.Echo) return;
+        if (key.Keycode != Key.Escape) return;
+
+        if (_confirmDeleteOverlay.Visible) CancelDelete();
+        else if (_creditsOverlay.Visible) CloseCredits();
+        else if (_slotsOverlay.Visible) CloseSlots();
+        GetViewport().SetInputAsHandled();
+    }
 
     private void StartGame()
     {
@@ -189,8 +244,23 @@ public partial class MainMenu : UiBase
         _slotsList = new VBoxContainer();
         _slotsList.AddThemeConstantOverride("separation", 8);
         content.AddChild(_slotsList);
-        content.AddChild(MakeButton(T("menu_back"), CloseSlots));
+        _slotsBackBtn = MakeButton(T("menu_back"), CloseSlots);
+        content.AddChild(_slotsBackBtn);
         return _slotsOverlay;
+    }
+
+    private Control BuildConfirmDeleteOverlay()
+    {
+        var yesBtn = MakeButton(T("confirm_yes"), ConfirmDelete, hoverFx: true, minSize: new Vector2(120, 44), fontSize: 20);
+        var noBtn = MakeButton(T("confirm_no"), CancelDelete, hoverFx: true, minSize: new Vector2(120, 44), fontSize: 20);
+
+        var row = new HBoxContainer();
+        row.AddThemeConstantOverride("separation", 24);
+        row.Alignment = BoxContainer.AlignmentMode.Center;
+        row.AddChild(yesBtn);
+        row.AddChild(noBtn);
+
+        return BuildOverlay(T("confirm_delete_title"), row);
     }
 
     /// <summary>重建存档位列表（每个位 = 继续按钮 + 删除按钮）。</summary>
@@ -218,8 +288,29 @@ public partial class MainMenu : UiBase
     private void OnDeleteSlot(int slot)
     {
         if (!SaveService.Has(slot)) return;   // 空位点了无反应
-        SaveService.Delete(slot);
+        _pendingDeleteSlot = slot;
+        ShowOverlay(_confirmDeleteOverlay);
+        _slotsBackBtn.Disabled = true;   // 确认窗口在最顶层：禁用被盖住的返回按钮
+        Nav.Clear();
+    }
+
+    private void ConfirmDelete()
+    {
+        if (_pendingDeleteSlot >= 0 && SaveService.Has(_pendingDeleteSlot))
+            SaveService.Delete(_pendingDeleteSlot);
+        _pendingDeleteSlot = -1;
+        HideOverlay(_confirmDeleteOverlay);
+        _slotsBackBtn.Disabled = false;
+        Nav.Clear();
         RefreshSlots();
+    }
+
+    private void CancelDelete()
+    {
+        _pendingDeleteSlot = -1;
+        HideOverlay(_confirmDeleteOverlay);
+        _slotsBackBtn.Disabled = false;
+        Nav.Clear();
     }
 
     /// <summary>存档位按钮文案：名字 + 关键进度。</summary>
@@ -248,12 +339,29 @@ public partial class MainMenu : UiBase
 
     private Control MakeCreditLine(string role, string name)
     {
-        var label = new Label
+        var row = new HBoxContainer();
+        row.AddThemeConstantOverride("separation", 20);
+        row.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
+
+        // 角色列固定宽 + 居中（角色名中心对齐），姓名列固定宽 + 居中（人名中心对齐）
+        var roleLabel = new Label
         {
-            Text = role + "  " + name,
+            Text = role,
             HorizontalAlignment = HorizontalAlignment.Center,
+            CustomMinimumSize = new Vector2(150, 0),
         };
-        label.AddThemeFontSizeOverride("font_size", 22);
-        return label;
+        roleLabel.AddThemeFontSizeOverride("font_size", 22);
+
+        var nameLabel = new Label
+        {
+            Text = name,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            CustomMinimumSize = new Vector2(220, 0),
+        };
+        nameLabel.AddThemeFontSizeOverride("font_size", 22);
+
+        row.AddChild(roleLabel);
+        row.AddChild(nameLabel);
+        return row;
     }
 }

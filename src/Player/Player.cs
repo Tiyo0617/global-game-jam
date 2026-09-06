@@ -84,8 +84,8 @@ public partial class Player : CharacterBody2D
     }
 
     /// <summary>
-    /// 按"增大体型" buff 的累计层数计算阶段，更换精灵皮肤。
-    /// 只统计 HitboxScale 且数值 &gt; 0 的 buff，其他 buff 不计。
+    /// 按玩家获得的 buff 总数量计算阶段，更换精灵皮肤。
+    /// 玩家线所有词条都算，不特指某一类。
     /// 0~1 → 原始（StageAnimator 配置的 IdleTexture/WalkTexture）
     /// 2~4 → sprout
     /// 5+ → flower
@@ -94,7 +94,7 @@ public partial class Player : CharacterBody2D
     {
         int count = 0;
         foreach (var u in GameManager.I.PlayerUpgrades)
-            if (u != null && u.Stat == PlayerStat.HitboxScale && u.Value > 0f)
+            if (u != null)
                 count++;
 
         int stage = count < 2 ? 0 : (count < 5 ? 1 : 2);

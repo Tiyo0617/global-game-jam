@@ -51,6 +51,13 @@ public partial class AudioService : Node
         { "hit", 40 },
     };
 
+    /// <summary>key → 播放起始偏移（秒）。部分素材开头带一段静音，从头播要等静音放完才出声、
+    /// 点击后有"延迟感"；从偏移处直接起播可消除。未登记 = 0（从头播）。</summary>
+    private static readonly Dictionary<string, float> StartOffsetSec = new()
+    {
+        { "ui", 0.5f },   // UI点击音效前段约 0.5s 静音，从 0.5s 起播
+    };
+
     private readonly Dictionary<string, List<AudioStreamPlayer>> _voices = new();
     private readonly Dictionary<string, int> _nextVoice = new();
     private readonly Dictionary<string, ulong> _lastPlayed = new();
@@ -137,18 +144,21 @@ public partial class AudioService : Node
         }
 
         // 优先找空闲声道；全部忙时轮询覆盖最早开始的，保证连续触发不丢音
+        // 起始偏移：跳过素材前段静音，避免点击后"延迟感"
+        float offset = StartOffsetSec.TryGetValue(r.Key, out float o) ? o : 0f;
+
         int start = _nextVoice.TryGetValue(r.Key, out int n) ? n : 0;
         for (int i = 0; i < list.Count; i++)
         {
             int idx = (start + i) % list.Count;
             if (!list[idx].Playing)
             {
-                list[idx].Play();
+                list[idx].Play(offset);
                 _nextVoice[r.Key] = (idx + 1) % list.Count;
                 return;
             }
         }
-        list[start].Play();
+        list[start].Play(offset);
         _nextVoice[r.Key] = (start + 1) % list.Count;
     }
 

@@ -149,6 +149,22 @@ public partial class UpgradePicker : UiBase
         panel.CustomMinimumSize = new Vector2(280, 200);
         panel.MouseFilter = Control.MouseFilterEnum.Stop;
 
+        // 亮纹边框：突出框线，用亮蓝白分隔三张卡
+        var cardStyle = new StyleBoxFlat
+        {
+            BgColor = new Color(0.10f, 0.12f, 0.17f, 0.96f),
+            BorderColor = new Color(0.72f, 0.85f, 1f, 0.9f),
+            BorderWidthLeft = 2,
+            BorderWidthRight = 2,
+            BorderWidthTop = 2,
+            BorderWidthBottom = 2,
+            CornerRadiusTopLeft = 10,
+            CornerRadiusTopRight = 10,
+            CornerRadiusBottomLeft = 10,
+            CornerRadiusBottomRight = 10,
+        };
+        panel.AddThemeStyleboxOverride("panel", cardStyle);
+
         var margin = new MarginContainer();
         margin.AddThemeConstantOverride("margin_left", 20);
         margin.AddThemeConstantOverride("margin_right", 20);

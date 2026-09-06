@@ -147,12 +147,14 @@ public partial class MenuNav : Node
     }
 
     /// <summary>回车确认：触发当前预选按钮的 Pressed。</summary>
-    public void Confirm()
+    /// <summary>回车确认：触发当前预选按钮的 Pressed。返回是否真正触发了按钮。</summary>
+    public bool Confirm()
     {
-        if (_index < 0 || _index >= _buttons.Count) return;
+        if (_index < 0 || _index >= _buttons.Count) return false;
         var btn = _buttons[_index];
-        if (!IsUsable(btn)) return;
+        if (!IsUsable(btn)) return false;
         btn.EmitSignal(BaseButton.SignalName.Pressed);
+        return true;
     }
 
     private bool IsSelected(Button btn)
@@ -199,8 +201,8 @@ public partial class MenuNav : Node
 
         if (key.Keycode is Key.Enter or Key.KpEnter)
         {
-            Confirm();
-            GetViewport().SetInputAsHandled();
+            // 只有真正触发了按钮才标记 handled，否则让其他导航器（如有）继续处理
+            if (Confirm()) GetViewport().SetInputAsHandled();
         }
     }
 }

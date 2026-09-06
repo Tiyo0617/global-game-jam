@@ -40,6 +40,7 @@ IdleFrames = 2
 WalkTexture = ExtResource("6_tex_walk")
 WalkFrames = 4
 AnimSpeed = 10.0
+AutoCenterContent = true
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("CircleShape2D_ply")

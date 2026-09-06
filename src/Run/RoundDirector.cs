@@ -115,6 +115,15 @@ public partial class RoundDirector : Node
         _phase = RoundPhase.Upgrading;
         GameManager.I.DeathbladeActive = false;
         Bus.Pub(new RoundWon(GameManager.I.Round));
+
+        // 最后一轮胜利 → 直接通关结算，不再弹"选 buff"（第八轮打通即通关）
+        if (GameManager.I.Round >= TotalRounds)
+        {
+            GameManager.I.Round++;   // 推进到 TotalRounds+1，标记已通关（存档按此算总击杀）
+            Finish();
+            return;
+        }
+
         OfferUpgrade(forPlayer: false);     // 胜利 → 强化敌人
     }
 
@@ -165,6 +174,15 @@ public partial class RoundDirector : Node
         if (success)
         {
             Bus.Pub(new RoundWon(GameManager.I.Round));
+
+            // 最后一轮名刀翻盘 → 直接通关结算
+            if (GameManager.I.Round >= TotalRounds)
+            {
+                GameManager.I.Round++;
+                Finish();
+                return;
+            }
+
             OfferUpgrade(forPlayer: false);
         }
         else
