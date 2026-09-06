@@ -25,16 +25,17 @@ public partial class Weapon : Node
 
     // ---- 环绕发射口特效（代表激光当前环绕发射点）----
     /// <summary>
-    /// 发射口特效贴图 = bullet_orb（复用玩家已有素材）。想换图：把美术图放进 art/ 后改这一行路径。
+    /// 发射口特效贴图 = bulletdoor（玩家新加的 64×64 单帧图，做"门/出口"标记）。
+    /// 想换图：把美术图放进 art/ 后改这一行路径。
     /// </summary>
-    private const string MuzzleFxTexPath = "res://art/anim/bullet_orb.png";
+    private const string MuzzleFxTexPath = "res://art/anim/bulletdoor.png";
     /// <summary>
-    /// 发射口绕玩家旋转的轨道半径（px）：与子弹枪口偏移(16)一致 → 光点正好标记子弹冒出的位置。
-    /// ZIndex=10 保证即使与角色立绘交叠也画在最上层，不会被遮。
+    /// 发射口绕玩家旋转的轨道半径（px）：激光生成/光束也从该半径喷出（与开火 Position 同源），
+    /// 所以半径 = 标记贴着实际出弹点的距离。
     /// </summary>
-    private const float MuzzleOrbit = 16f;
+    private const float MuzzleOrbit = 40f;
     /// <summary>发射口贴图的显示宽度（px）。贴图多大都会自动缩到这个尺寸。</summary>
-    private const float MuzzleFxSize = 18f;
+    private const float MuzzleFxSize = 60f;
 
     // ⚠️ 调试开关：true = 强制开启对应词条（词条系统未完成时的临时验证手段）。
     //    正常游玩保持 false —— 词条由三选一系统启用。
@@ -107,7 +108,7 @@ public partial class Weapon : Node
         var sprite = new Sprite2D
         {
             Texture = tex,
-            Modulate = Colors.White,   // 直接用 bullet_orb 原色（不染色）
+            Modulate = Colors.White,   // 直接用 bulletdoor 原色（不染色）
         };
         // 按贴图原始尺寸自动缩放到统一显示大小（换多大贴图都不用改比例）
         Vector2 t = tex.GetSize();

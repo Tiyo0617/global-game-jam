@@ -62,6 +62,8 @@ public partial class Health : Node
         if (GetParent() is Node ownerNode && ownerNode.IsInGroup("player"))
         {
             StartInvincible(GameManager.I.Feel?.InvincibleTime ?? 1.5f);
+            string pos = ownerNode is Node2D n2 ? $"{n2.GlobalPosition.X:F0},{n2.GlobalPosition.Y:F0}" : "?";
+            GD.Print($"[HP调试] 玩家受击 {Current + Mathf.Max(1, (int)amount)}→{Current} @({pos})（t={Time.GetTicksMsec()}ms）");
         }
 
         if (Current <= 0)

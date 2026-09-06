@@ -25,8 +25,26 @@ public partial class UpgradeService : Node
         Bus.Sub<UpgradeChosen>(this, OnChosen);
 
         // ===== ⚠️ 临时诊断日志：定位"未拿分裂卡就分裂/首波空刷"用，定位后整段删除 =====
-        Bus.Sub<RoundStarted>(this, e => GD.Print(
-            $"[诊断] ===== 第 {e.Round} 轮开始（t={Time.GetTicksMsec()}ms）FlagSplit={GameManager.I.EnemyStats.HasFlag(EnemyStat.FlagSplit)} ====="));
+        Bus.Sub<RoundStarted>(this, e =>
+        {
+            // 聚合诊断：把"清场后场上还剩什么"塞进轮开始这一行，一次就能看出残留。
+            var es = GetParent()?.GetNodeOrNull<EnemyService>("EnemyService");
+            var bs = GetParent()?.GetNodeOrNull<BulletService>("BulletService");
+            int inFlight = 0;
+            if (bs != null)
+                foreach (var c in bs.GetChildren())
+                    if (c is Bullet b && GodotObject.IsInstanceValid(b) && b.Visible) inFlight++;
+
+            var p = GameManager.I.Player;
+            string hp = "?,pos=?";
+            if (p != null && GodotObject.IsInstanceValid(p))
+            {
+                var h = p.GetNodeOrNull<Health>("Health");
+                if (h != null) hp = $"{h.Current}/{h.MaxHP},pos=({p.GlobalPosition.X:F0},{p.GlobalPosition.Y:F0})";
+            }
+            GD.Print($"[诊断] ===== 第 {e.Round} 轮开始（t={Time.GetTicksMsec()}ms）FlagSplit=" +
+                $"{GameManager.I.EnemyStats.HasFlag(EnemyStat.FlagSplit)} 玩家hp={hp} 场上敌={es?.AliveCount} 在途子弹={inFlight} =====");
+        });
         Bus.Sub<WaveStarted>(this, e => GD.Print(
             $"[诊断] 第 {e.WaveIndex} 波刷出，本波 {e.Count} 只（t={Time.GetTicksMsec()}ms）"));
         Bus.Sub<EnemySpawned>(this, e =>
