@@ -65,7 +65,9 @@ public partial class ResultScreen : UiBase
     {
         GetTree().Paused = true;   // 结算时暂停，玩家不能再动
 
-        _rankLabel.Text = Rating.RankOf(r.TotalDeaths);
+        string rank = Rating.RankOf(r.TotalDeaths);
+        _rankLabel.Text = rank;
+        _rankLabel.AddThemeColorOverride("font_color", RankColor(rank));
         _deathsLabel.Text = T("result_deaths") + "  " + r.TotalDeaths;
         _timeLabel.Text = T("result_time") + "  " + FormatTime(r.Time);
 
@@ -89,6 +91,18 @@ public partial class ResultScreen : UiBase
         GetTree().Paused = false;
         GetTree().ChangeSceneToFile(MainMenuScenePath);
     }
+
+    /// <summary>评级配色：SSS 亮金，SS 浅紫，S 橙，A 蓝，B 绿，C 白，D 灰。</summary>
+    private static Color RankColor(string rank) => rank switch
+    {
+        "SSS" => new Color(1f, 0.82f, 0.10f),    // 亮金 #FFD11A
+        "SS"  => new Color(0.79f, 0.65f, 0.94f), // 浅紫
+        "S"   => new Color(1f, 0.62f, 0.10f),    // 橙
+        "A"   => new Color(0.35f, 0.66f, 1f),    // 蓝
+        "B"   => new Color(0.45f, 0.85f, 0.50f), // 绿
+        "C"   => new Color(0.95f, 0.96f, 0.98f), // 白
+        _     => new Color(0.60f, 0.60f, 0.62f), // 灰（D）
+    };
 
     private static string FormatTime(float sec)
     {
