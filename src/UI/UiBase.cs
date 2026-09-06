@@ -11,7 +11,8 @@ namespace GGJ;
 /// </summary>
 public abstract partial class UiBase : CanvasLayer
 {
-    private readonly Dictionary<Control, Tween> _scaleTweens = new();
+    /// <summary>菜单导航器：键盘/鼠标预选 + 边框流光 + 粒子 + 缩放。MakeButton(hoverFx:true) 自动注册。</summary>
+    protected MenuNav Nav { get; private set; } = null!;
 
     /// <summary>当前 UI 的根 Control（子类在 OnUiReady 里赋值，用于整体淡出 / 字体兜底）。</summary>
     protected Control Root { get; set; } = null!;
@@ -27,6 +28,9 @@ public abstract partial class UiBase : CanvasLayer
         Strings = GameManager.I.Strings
             ?? Res.Load<StringsData>("res://data/strings.tres")
             ?? StringsData.CreateDefault();
+
+        Nav = new MenuNav { Name = "MenuNav" };
+        AddChild(Nav);
 
         OnUiReady();
 
@@ -63,7 +67,10 @@ public abstract partial class UiBase : CanvasLayer
 
     // ---------- 按钮 ----------
 
-    /// <summary>造按钮。hoverFx = 是否加悬停/点击缩放；iconPath 可空；minSize / fontSize 可调。</summary>
+    /// <summary>
+    /// 造按钮。hoverFx = 是否接入菜单导航（键盘/鼠标预选 + 边框流光 + 向右下洒落粒子 + 缩放）。
+    /// iconPath 可空；minSize / fontSize 可调。
+    /// </summary>
     protected Button MakeButton(string text, Action onClick, bool hoverFx = true, string? iconPath = null, Vector2? minSize = null, int fontSize = 24)
     {
         var btn = new Button { Text = text };
@@ -81,27 +88,8 @@ public abstract partial class UiBase : CanvasLayer
             Bus.Pub(new SfxRequest { Key = "ui" });   // UI 点击音效：所有按钮统一在这里响
             onClick();
         };
-        if (hoverFx) AddHoverFx(btn);
+        if (hoverFx) Nav.Add(btn);
         return btn;
-    }
-
-    protected void AddHoverFx(Button btn)
-    {
-        btn.MouseEntered += () => AnimateScale(btn, 1.06f, 0.1f);
-        btn.MouseExited += () => AnimateScale(btn, 1f, 0.1f);
-        btn.ButtonDown += () => AnimateScale(btn, 0.94f, 0.06f);
-        btn.ButtonUp += () => AnimateScale(btn, 1.06f, 0.1f);
-        btn.Resized += () => btn.PivotOffset = btn.Size / 2f;
-    }
-
-    protected void AnimateScale(Control c, float target, float dur)
-    {
-        if (_scaleTweens.TryGetValue(c, out var old)) old?.Kill();
-        var tw = CreateTween();
-        tw.TweenProperty(c, "scale", Vector2.One * target, dur)
-          .SetTrans(Tween.TransitionType.Quad)
-          .SetEase(Tween.EaseType.Out);
-        _scaleTweens[c] = tw;
     }
 
     // ---------- 淡入淡出 ----------

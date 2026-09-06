@@ -232,4 +232,18 @@ public partial class UpgradeService : Node
             GameManager.I.EnemyUpgrades.Add(en);
         }
     }
+
+    /// <summary>按 DisplayName 在词条池里找一张卡（存档恢复 buff 用）。</summary>
+    public Resource? FindByName(string displayName, bool forPlayer)
+    {
+        if (forPlayer)
+        {
+            foreach (var c in _playerPool) if (c.DisplayName == displayName) return c;
+        }
+        else
+        {
+            foreach (var c in _enemyPool) if (c.DisplayName == displayName) return c;
+        }
+        return null;
+    }
 }

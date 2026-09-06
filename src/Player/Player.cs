@@ -10,9 +10,28 @@ public partial class Player : CharacterBody2D
 {
     private Health _health = null!;
     private Area2D _hurtbox = null!;
+    private SpriteAnimator _animator = null!;
     private Vector2 _vel;
     private int _lifestealCounter;
     private int _growthCounter;
+
+    // 进化皮肤（按累计 buff 数切换：0~1 原始 / 2~4 sprout / 5+ flower）
+    [Export] public Texture2D? Growth1Idle;       // sprout
+    [Export] public Texture2D? Growth1Walk;
+    [Export] public int Growth1IdleFrames = 2;
+    [Export] public int Growth1WalkFrames = 4;
+
+    [Export] public Texture2D? Growth2Idle;       // flower
+    [Export] public Texture2D? Growth2Walk;
+    [Export] public int Growth2IdleFrames = 2;
+    [Export] public int Growth2WalkFrames = 4;
+
+    // 缓存"原始"皮肤（从 SpriteAnimator 读，stage 0 时还原）
+    private Texture2D? _origIdle;
+    private Texture2D? _origWalk;
+    private int _origIdleFrames;
+    private int _origWalkFrames;
+    private int _growthStage = -1;   // -1 = 未初始化
 
     public Health HealthComp => _health;
 
@@ -20,6 +39,7 @@ public partial class Player : CharacterBody2D
     {
         _health = GetNode<Health>("Health");
         _hurtbox = GetNode<Area2D>("Hurtbox");
+        _animator = GetNode<SpriteAnimator>("AnimatedSprite2D");
         AddToGroup("player");
 
         CollisionLayer = Layers.Player;
@@ -33,6 +53,13 @@ public partial class Player : CharacterBody2D
         int maxHp = (int)GameManager.I.PlayerStats.Get(PlayerStat.MaxHP);
         _health.SetMaxHP(maxHp, healToFull: true);
         GlobalPosition = ArenaBounds.Center;
+
+        // 缓存原始皮肤，并按当前 buff 数应用阶段
+        _origIdle = _animator.IdleTexture;
+        _origWalk = _animator.WalkTexture;
+        _origIdleFrames = _animator.IdleFrames;
+        _origWalkFrames = _animator.WalkFrames;
+        UpdateGrowthStage();
     }
 
     /// <summary>每轮开始：回满血、回中心、清无敌。</summary>
@@ -46,6 +73,40 @@ public partial class Player : CharacterBody2D
         Velocity = Vector2.Zero;
         _lifestealCounter = 0;
         _growthCounter = 0;
+
+        // 选 buff 后 buff 数量变了，每轮刷新一次外观
+        UpdateGrowthStage();
+    }
+
+    /// <summary>
+    /// 按"增大体型" buff 的累计层数计算阶段，更换精灵皮肤。
+    /// 只统计 HitboxScale 且数值 &gt; 0 的 buff，其他 buff 不计。
+    /// 0~1 → 原始（StageAnimator 配置的 IdleTexture/WalkTexture）
+    /// 2~4 → sprout
+    /// 5+ → flower
+    /// </summary>
+    public void UpdateGrowthStage()
+    {
+        int count = 0;
+        foreach (var u in GameManager.I.PlayerUpgrades)
+            if (u != null && u.Stat == PlayerStat.HitboxScale && u.Value > 0f)
+                count++;
+
+        int stage = count < 2 ? 0 : (count < 5 ? 1 : 2);
+        if (stage == _growthStage) return;
+        _growthStage = stage;
+
+        var (idle, walk, idleF, walkF) = stage switch
+        {
+            0 => (_origIdle, _origWalk, _origIdleFrames, _origWalkFrames),
+            1 => (Growth1Idle, Growth1Walk, Growth1IdleFrames, Growth1WalkFrames),
+            _ => (Growth2Idle, Growth2Walk, Growth2IdleFrames, Growth2WalkFrames),
+        };
+        _animator.IdleTexture = idle;
+        _animator.WalkTexture = walk;
+        _animator.IdleFrames = idleF;
+        _animator.WalkFrames = walkF;
+        _animator.Refresh();
     }
 
     public override void _PhysicsProcess(double delta)
