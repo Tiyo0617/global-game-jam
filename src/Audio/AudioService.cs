@@ -35,6 +35,13 @@ public partial class AudioService : Node
     /// <summary>上面这些 key 里属于"长循环氛围音"的，加载为单实例常驻循环声道。</summary>
     private static readonly HashSet<string> LoopKeys = new() { "elite", "swarm" };
 
+    /// <summary>循环氛围音各自的音量（dB，0 = 原始音量，负数越小越轻）。未登记的 key 默认 0。</summary>
+    private static readonly Dictionary<string, float> LoopVolumeDb = new()
+    {
+        { "swarm", -11f },  // 蜂群循环声偏吵，压低一档
+        { "elite", -6f },   // 精英出没声稍微压低一点（幅度小于蜂群）
+    };
+
     /// <summary>每类短音效的并行声道数。连续快速射击/命中时声道轮播，避免互相打断/丢音。</summary>
     private const int VoicesPerSound = 4;
 
@@ -62,6 +69,9 @@ public partial class AudioService : Node
         // 循环氛围音：跟随敌人实体出生/消失启停（elite=精英，swarm=马蜂窝/马蜂）
         Bus.Sub<EnemySpawned>(this, OnEnemySpawned);
         Bus.Sub<EnemyDespawned>(this, OnEnemyDespawned);
+        // 游戏对局 BGM：随轮次推进切换强度（P2-18 附加）
+        Bus.Sub<RoundStarted>(this, OnRoundStarted);
+        Bus.Sub<RunFinished>(this, OnRunFinished);
     }
 
     private void LoadAll()
@@ -80,6 +90,7 @@ public partial class AudioService : Node
             {
                 // 循环氛围音：单实例常驻，播完自动从头循环，直到 StopLoop 显式停
                 var lp = new AudioStreamPlayer { Stream = stream };
+                lp.VolumeDb = LoopVolumeDb.GetValueOrDefault(key, 0f);   // 按表设置音量（默认原声）
                 lp.ProcessMode = ProcessModeEnum.Always;
                 lp.Finished += () => { if (_loopOn[key]) lp.Play(); };
                 AddChild(lp);
@@ -201,5 +212,69 @@ public partial class AudioService : Node
             if (_loopOn.TryGetValue(key, out bool on) && on) StopLoop(key);
             if (_loopRefs.ContainsKey(key)) _loopRefs[key] = 0;
         }
+    }
+
+    // ==================== 游戏对局 BGM（P2-18 附加：随轮次推进切强度）====================
+    //
+    // 曲目梯度（audio/bgm/，森林自然风，由 Tests/GenBgm4.cs 程序合成，可随时替换同名文件）：
+    //   bgm_game_1.wav  96 BPM  C大调 悠然漫步 → 轮 1~2
+    //   bgm_game_2.wav 104 BPM  F大调 溪流轻快 → 轮 3~4
+    //   bgm_game_3.wav 112 BPM  G大调 林间跳跃 → 轮 5~6
+    //   bgm_game_4.wav 120 BPM  D大调 生机奔跑 → 轮 7~8
+    //
+    // 生命周期：RoundStarted（每关开始/切关）→ 换对应强度曲循环；
+    // 同一关内失败重打不重启（不打断氛围）；RunFinished（整局结束）→ 停。
+    // 主菜单 BGM（UIbgm）由 MainMenu 场景自持，切进游戏场景时自动释放停止。
+
+    private AudioStreamPlayer? _gameBgm;
+    private string? _currentGameBgmKey;
+
+    private void OnRoundStarted(RoundStarted e)
+    {
+        // 轮次 → 强度档位：轮 1-2 → 曲 1，3-4 → 曲 2，5-6 → 曲 3，7-8 → 曲 4
+        int idx = Mathf.Clamp((e.Round - 1) / 2 + 1, 1, 4);
+        PlayGameBgm($"bgm_game_{idx}");
+    }
+
+    private void OnRunFinished(RunFinished e)
+    {
+        _gameBgm?.Stop();
+        _currentGameBgmKey = null;
+    }
+
+    private void PlayGameBgm(string key)
+    {
+        if (_currentGameBgmKey == key) return;   // 同关重打不重启（不打断氛围）
+
+        string path = $"res://audio/bgm/{key}.wav";
+        if (!ResourceLoader.Exists(path))
+        {
+            GD.PushWarning($"[AudioService] 游戏 BGM 缺失（跳过）：{path}");
+            return;
+        }
+
+        var stream = GD.Load<AudioStream>(path);
+        if (stream is AudioStreamWav wav)
+        {
+            wav.LoopMode = AudioStreamWav.LoopModeEnum.Forward;   // 无缝循环
+            wav.LoopBegin = 0;
+            wav.LoopEnd = wav.Data.Length / 2;
+        }
+
+        if (_gameBgm == null)
+        {
+            _gameBgm = new AudioStreamPlayer
+            {
+                VolumeDb = -10f,                              // 对局 BGM 音量（森林版较轻柔，略提升避免被音效盖住）
+                ProcessMode = ProcessModeEnum.Always,         // 三选一暂停时音乐继续
+            };
+            AddChild(_gameBgm);
+            _gameBgm.Finished += () => _gameBgm.Play();       // 兜底循环
+        }
+
+        _gameBgm.Stream = stream;
+        _gameBgm.Play();
+        _currentGameBgmKey = key;
+        GD.Print($"[AudioService] 对局 BGM：{key}");
     }
 }
