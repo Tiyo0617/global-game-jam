@@ -38,7 +38,8 @@ public partial class AudioService : Node
     /// <summary>循环氛围音各自的音量（dB，0 = 原始音量，负数越小越轻）。未登记的 key 默认 0。</summary>
     private static readonly Dictionary<string, float> LoopVolumeDb = new()
     {
-        { "swarm", -8f },   // 蜂群循环声偏吵，压低一档
+        { "swarm", -11f },  // 蜂群循环声偏吵，压低一档
+        { "elite", -6f },   // 精英出没声稍微压低一点（幅度小于蜂群）
     };
 
     /// <summary>每类短音效的并行声道数。连续快速射击/命中时声道轮播，避免互相打断/丢音。</summary>
